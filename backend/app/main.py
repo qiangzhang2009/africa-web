@@ -37,37 +37,33 @@ app = FastAPI(
 # ─── CORS ───────────────────────────────────────────────────────────────────
 import os
 
-_env_origins = os.getenv("CORS_ORIGINS", "").strip()
-if _env_origins in ("*", "all", "true"):
-    # Allow all origins (for development / open APIs)
+origins_raw = os.getenv("CORS_ORIGINS", "").strip()
+if origins_raw in ("*", "all", "true"):
     _allow_all = True
-else:
+    allow_origins = ["*"]
+    allow_credentials = False
+elif origins_raw:
+    allow_origins = [o.strip() for o in origins_raw.split(",") if o.strip()]
+    allow_credentials = True
     _allow_all = False
-    origins = [o.strip() for o in _env_origins.split(",") if o.strip()] if _env_origins else []
-
-# Default to allowing the production frontend domain
-if not _allow_all and not origins:
-    origins = [
-        "https://africa-web-1.onrender.com",
-        "http://localhost:5173",
-    ]
-
-if _allow_all:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Default: always allow the production frontend domains
+    allow_origins = [
+        "https://africa-web-1.onrender.com",
+        "https://africa-web-1-*.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
+    allow_credentials = True
+    _allow_all = False
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
 app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
