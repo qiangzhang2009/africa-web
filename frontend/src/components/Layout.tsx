@@ -19,13 +19,13 @@ export default function Layout() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">A0</span>
               </div>
               <span className="font-heading text-lg font-bold text-slate-900">
                 AfricaZero
               </span>
-              <span className="hidden sm:inline text-xs bg-primary-100 text-primary-700 font-medium px-2 py-0.5 rounded-full">
+              <span className="hidden sm:inline text-xs bg-orange-100 text-orange-700 font-medium px-2 py-0.5 rounded-full">
                 零关税
               </span>
             </Link>
@@ -38,7 +38,7 @@ export default function Layout() {
                   to={link.to}
                   className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                     location.pathname === link.to
-                      ? 'bg-primary-50 text-primary-700 font-medium'
+                      ? 'bg-orange-50 text-orange-700 font-medium'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
@@ -57,7 +57,7 @@ export default function Layout() {
               </Link>
               <Link
                 to="/pricing"
-                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors"
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 开通 Pro
               </Link>
@@ -75,7 +75,7 @@ export default function Layout() {
               to={link.to}
               className={`whitespace-nowrap px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 location.pathname === link.to
-                  ? 'bg-primary-50 text-primary-700 font-medium'
+                  ? 'bg-orange-50 text-orange-700 font-medium'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -94,7 +94,7 @@ export default function Layout() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 bg-primary-500 rounded-md flex items-center justify-center">
+                <div className="w-7 h-7 bg-orange-500 rounded-md flex items-center justify-center">
                   <span className="text-white font-bold text-xs">A0</span>
                 </div>
                 <span className="font-heading text-white font-bold">AfricaZero</span>

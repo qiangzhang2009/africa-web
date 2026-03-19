@@ -9,6 +9,8 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.routers import calculator, hs_codes, countries, subscribe
 
@@ -39,23 +41,18 @@ import os
 
 origins_raw = os.getenv("CORS_ORIGINS", "").strip()
 if origins_raw in ("*", "all", "true"):
-    _allow_all = True
     allow_origins = ["*"]
     allow_credentials = False
 elif origins_raw:
     allow_origins = [o.strip() for o in origins_raw.split(",") if o.strip()]
     allow_credentials = True
-    _allow_all = False
 else:
-    # Default: always allow the production frontend domains
     allow_origins = [
         "https://africa-web-1.onrender.com",
-        "https://africa-web-1-*.onrender.com",
         "http://localhost:5173",
         "http://localhost:3000",
     ]
     allow_credentials = True
-    _allow_all = False
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,6 +61,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ─── OPTIONS bypass middleware ────────────────────────────────────────────────
+# Render + Cloudflare platform layer intercepts OPTIONS preflight before it
+# reaches this middleware. The Cloudflare Worker (_worker.js) handles this
+# for browser requests. For direct backend calls, we still return proper headers.
+@app.middleware("http")
+async def cors_options_bypass(request: Request, call_next):
+    if request.method == "OPTIONS":
+        origin = request.headers.get("origin", "")
+        response = Response(status_code=204)
+        response.headers["Access-Control-Allow-Origin"] = origin or "https://africa-web-1.onrender.com"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        response.headers["Vary"] = "Origin"
+        return response
+    return await call_next(request)
+
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
 app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
