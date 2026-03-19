@@ -1,0 +1,12 @@
+name = "africa-web-cors-proxy"
+main = "public/_worker.js"
+compatibility_date = "2024-01-01"
+
+# Route: deploy this worker to handle API calls
+# Options:
+#  (A) Subdomain: api.africa-web-1.onrender.com → deploy with a custom route
+#  (B) Standalone: just deploy as-is, we'll use the worker URL directly
+#  (C) Bind to same zone as static site (requires Cloudflare zone setup)
+
+[observability]
+enabled = true

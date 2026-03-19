@@ -17,8 +17,16 @@ from app.routers import calculator, hs_codes, countries, subscribe
 load_dotenv()
 
 # ─── Database initialization ─────────────────────────────────────────────────
-DB_PATH = Path("data") / "africa_zero.db"
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+def _get_db_path() -> Path:
+    raw = os.getenv("DATABASE_URL", "data/africa_zero.db")
+    path = Path(raw)
+    # If path is relative, resolve from where uvicorn is started (cwd)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+DB_PATH = _get_db_path()
 
 
 @asynccontextmanager

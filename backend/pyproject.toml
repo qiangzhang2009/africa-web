@@ -1,0 +1,18 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+# poetry 2.x auto-detects this package as poetry-managed and intercepts pip.
+# Disable all poetry behaviour — we use plain pip.
+# DO NOT add dependencies here. They are in requirements.txt.
+name = "africa-zero-backend"
+version = "1.0.0"
+description = "AfricaZero FastAPI Backend"
+authors = ["John"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.overrides]
+# Empty — tells poetry: "I know this file exists but don't manage this project"
