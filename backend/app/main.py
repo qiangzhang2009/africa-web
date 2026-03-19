@@ -2,10 +2,10 @@
 AfricaZero — FastAPI Backend
 Main entry point. Routes are mounted in app/routers/.
 """
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +29,23 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# ─── CORS configuration (must be before any routes) ─────────────────────────
+_origins_raw = os.getenv("CORS_ORIGINS", "").strip()
+if _origins_raw in ("*", "all", "true"):
+    _allow_origins = ["*"]
+    _allow_credentials = False
+elif _origins_raw:
+    _allow_origins = [o.strip() for o in _origins_raw.split(",") if o.strip()]
+    _allow_credentials = True
+else:
+    # Default fallback — allow common development URLs
+    _allow_origins = [
+        "https://africa-web-1.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
+    _allow_credentials = True
+
 app = FastAPI(
     title="AfricaZero API",
     description="非洲零关税全链路决策平台 API",
@@ -36,50 +53,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ─── CORS ───────────────────────────────────────────────────────────────────
-import os
-
-origins_raw = os.getenv("CORS_ORIGINS", "").strip()
-if origins_raw in ("*", "all", "true"):
-    allow_origins = ["*"]
-    allow_credentials = False
-elif origins_raw:
-    allow_origins = [o.strip() for o in origins_raw.split(",") if o.strip()]
-    allow_credentials = True
-else:
-    allow_origins = [
-        "https://africa-web-1.onrender.com",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ]
-    allow_credentials = True
-
+# CORSMiddleware MUST come FIRST (before routes) so it handles OPTIONS preflight
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=allow_credentials,
+    allow_origins=_allow_origins,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# ─── OPTIONS bypass middleware ────────────────────────────────────────────────
-# Render + Cloudflare platform layer intercepts OPTIONS preflight before it
-# reaches this middleware. The Cloudflare Worker (_worker.js) handles this
-# for browser requests. For direct backend calls, we still return proper headers.
-@app.middleware("http")
-async def cors_options_bypass(request: Request, call_next):
-    if request.method == "OPTIONS":
-        origin = request.headers.get("origin", "")
-        response = Response(status_code=204)
-        response.headers["Access-Control-Allow-Origin"] = origin or "https://africa-web-1.onrender.com"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-        response.headers["Access-Control-Max-Age"] = "86400"
-        response.headers["Vary"] = "Origin"
-        return response
-    return await call_next(request)
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
@@ -95,4 +76,5 @@ def health():
 
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

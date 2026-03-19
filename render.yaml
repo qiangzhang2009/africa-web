@@ -23,7 +23,7 @@ services:
       - key: DATABASE_URL
         value: data/africa_zero.db
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://africa-web-1.onrender.com"
       - key: POETRY_DISABLED
         value: "1"
 
