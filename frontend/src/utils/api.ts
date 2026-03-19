@@ -10,10 +10,27 @@ import type {
   Country,
 } from '../types'
 
+// ─── API Base URL ─────────────────────────────────────────────────────────────
+// Production: points to the Cloudflare Worker CORS proxy
+//   Deploy the worker at: https://dash.cloudflare.com → Workers & Pages → Create Worker
+//   Then set WORKER_URL in Cloudflare Worker's Settings → Variables
+//   After deploy, replace the URL below with your worker URL, e.g.:
+//   https://africa-web-cors-proxy.abc123.workers.dev
+const WORKER_URL =
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_WORKER_URL
+    ? String(import.meta.env.VITE_WORKER_URL)
+    : 'https://africa-web-cors-proxy.<your-account>.workers.dev'
+
+// Dev: Vite dev server proxies /api/* → http://localhost:8000 (no CORS issues)
+const BASE_URL = import.meta.env.DEV
+  ? '/api'
+  : `${WORKER_URL}`
+
 const api = axios.create({
-  baseURL: 'https://africa-web-wuxs.onrender.com/api/v1',
+  baseURL: `${BASE_URL}/api/v1`,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: false,
 })
 
 // ─── Tariff ───────────────────────────────────────────────────────────────────
