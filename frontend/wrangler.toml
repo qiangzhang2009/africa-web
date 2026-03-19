@@ -8,10 +8,10 @@ compatibility_date = "2024-01-01"
 #  (B) Standalone: just deploy as-is, we'll use the worker URL directly
 #  (C) Bind to same zone as static site (requires Cloudflare zone setup)
 
-# After deploying, set these Cloudflare Worker Environment Variables:
-#  BACKEND_ORIGIN = https://africa-web-wuxs.onrender.com
-#  ALLOWED_ORIGINS = https://africa-web-1.onrender.com,http://localhost:5173,http://localhost:3000
-#  WORKER_ORIGIN = https://africa-web-cors-proxy.${account}.workers.dev  (set after deploy)
+#  After deploying, set these Cloudflare Worker Environment Variables (via `wrangler secret put`):
+#  BACKEND_ORIGIN    = https://africa-web-wuxs.onrender.com
+#  ALLOWED_ORIGINS   = https://ec250edc.africa-zero-frontend.pages.dev,https://africa-zero-frontend.pages.dev,https://africa-web-1.onrender.com,http://localhost:5173
+#  WORKER_ORIGIN     = https://ec250edc.africa-zero-frontend.pages.dev
 
 [observability]
 enabled = true

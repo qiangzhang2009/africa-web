@@ -11,20 +11,10 @@ import type {
 } from '../types'
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
-// Production: points to the Cloudflare Worker CORS proxy
-//   Deploy the worker at: https://dash.cloudflare.com → Workers & Pages → Create Worker
-//   Then set WORKER_URL in Cloudflare Worker's Settings → Variables
-//   After deploy, replace the URL below with your worker URL, e.g.:
-//   https://africa-web-cors-proxy.abc123.workers.dev
-const WORKER_URL =
-  typeof import.meta !== 'undefined' && import.meta.env?.VITE_WORKER_URL
-    ? String(import.meta.env.VITE_WORKER_URL)
-    : 'https://africa-web-cors-proxy.<your-account>.workers.dev'
-
-// Dev: Vite dev server proxies /api/* → http://localhost:8000 (no CORS issues)
-const BASE_URL = import.meta.env.DEV
-  ? '/api'
-  : `${WORKER_URL}`
+// Production: same-origin via Cloudflare Pages Function proxy
+//   The Pages Function (_worker.js) at /api/* proxies to FastAPI on Render.
+//   No CORS needed since it's same-origin.
+const BASE_URL = import.meta.env.DEV ? '/api' : ''
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
