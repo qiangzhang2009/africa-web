@@ -1,0 +1,7 @@
+# Root-level requirements.txt — redirects to backend/
+# This file exists so Render can find dependencies at the repo root.
+# The actual backend dependencies are in backend/requirements.txt
+
+# Re-export backend requirements (Render installs this root file,
+# and the backend code uses backend/requirements.txt for dev.)
+-r backend/requirements.txt
