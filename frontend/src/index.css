@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #f97316;    /* Orange — 非洲太阳 */
+  --color-secondary: #0ea5e9;  /* Sky blue — 自由 */
+  --color-dark: #0f172a;       /* Slate 900 — 专业感 */
+  --color-light: #fef3c7;      /* Amber 100 — 温暖 */
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+.font-heading {
+  @apply font-sans font-bold tracking-tight;
+}
