@@ -37,6 +37,9 @@ services:
     rootDir: africa-zero
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_WORKER_URL
+        value: https://africa-web-cors-proxy.johnzhangfuture.workers.dev
     headers:
       - path: "/*"
         name: Cache-Control
