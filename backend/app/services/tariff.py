@@ -146,6 +146,9 @@ def calculate_tariff(
     destination: str,
     fob_value: float,
     db_path: str,
+    quantity_kg: float = 60.0,
+    freight_override: float | None = None,
+    exchange_rate: float | None = None,
 ) -> dict:
     hs_record = get_hs_record(hs_code, db_path)
 
@@ -163,9 +166,13 @@ def calculate_tariff(
     origin_upper = origin_country.upper()
 
     shipping_rate_usd = get_shipping_rate(origin_upper)
-    freight_usd = shipping_rate_usd * max(fob_value / 10, 1)   # scale by approximate qty
+    effective_qty = max(quantity_kg, 1)
+    if freight_override is not None:
+        freight_usd = freight_override
+    else:
+        freight_usd = shipping_rate_usd * effective_qty
     insurance_usd = fob_value * 0.005
-    usd_cny = get_usd_cny_rate()
+    usd_cny = exchange_rate if exchange_rate else get_usd_cny_rate()
 
     # Determine tariff rate
     if destination == "CN":
@@ -216,6 +223,7 @@ def calculate_tariff(
 
     breakdown = TariffBreakdown(
         fob_value=round(fob_value, 2),
+        quantity_kg=round(effective_qty, 2),
         freight=round(freight_usd, 2),
         insurance=round(insurance_usd, 2),
         tariff_rate=tariff_rate,
@@ -224,6 +232,7 @@ def calculate_tariff(
         vat_amount=round(vat_cny, 2),
         total_cost=round(total_cost_cny, 2),
         savings_vs_mfn=round(savings_vs_mfn, 2),
+        exchange_rate=usd_cny,
     )
 
     return {

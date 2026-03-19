@@ -11,12 +11,17 @@ class TariffCalcInput(BaseModel):
     hs_code: str = Field(..., min_length=4, max_length=15, description="HS编码")
     origin_country: str = Field(..., min_length=2, max_length=3, description="原产国 ISO code")
     destination: str = Field(..., description="目的地市场: CN/EU/AFCFTA")
-    fob_value: float = Field(..., gt=0, description="FOB货值")
+    fob_value: float = Field(..., gt=0, description="FOB货值(USD)")
     currency: str = Field(default="USD", description="币种")
+    # Optional advanced params
+    quantity_kg: float = Field(default=60.0, gt=0, description="采购量(kg)，用于精确计算运费摊薄")
+    freight_override: float | None = Field(default=None, description="手动指定运费(USD)，覆盖默认值")
+    exchange_rate: float | None = Field(default=None, gt=0, description="USD→CNY汇率，若不填则用默认值7.25")
 
 
 class TariffBreakdown(BaseModel):
     fob_value: float
+    quantity_kg: float
     freight: float
     insurance: float
     tariff_rate: float
@@ -25,6 +30,7 @@ class TariffBreakdown(BaseModel):
     vat_amount: float
     total_cost: float
     savings_vs_mfn: float
+    exchange_rate: float
 
 
 class TariffCalcResult(BaseModel):

@@ -26,6 +26,9 @@ async def calc_tariff(input: TariffCalcInput):
         destination=input.destination,
         fob_value=input.fob_value,
         db_path=DB_PATH,
+        quantity_kg=input.quantity_kg,
+        freight_override=input.freight_override,
+        exchange_rate=input.exchange_rate,
     )
     result["input"] = input.model_dump()
     return result

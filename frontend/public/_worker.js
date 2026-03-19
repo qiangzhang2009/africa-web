@@ -1,23 +1,17 @@
 /**
- * Cloudflare Pages Function: CORS Proxy + API Gateway
+ * Cloudflare Worker / Pages Function: CORS Proxy + Static File Server
  *
- * All requests to /api/* are proxied to the FastAPI backend on Render.com,
- * with CORS headers added for browser access. Same-origin routing means no
- * preflight, no CORS drama, and no 10s Render timeout for the browser.
+ * - /api/* requests: proxy to FastAPI backend + add CORS headers
+ * - All other requests: serve static files via env.ASSETS (Cloudflare Pages built-in)
  *
- * Deploy: push to GitHub → Cloudflare Pages auto-deploys.
- * Backend remains at: https://africa-web-wuxs.onrender.com
+ * Deploy Pages Function: wrangler pages deploy dist/ --project-name=africa-zero-frontend
  */
 
 const BACKEND_ORIGIN = "https://africa-web-wuxs.onrender.com"
 
-function corsHeaders(request) {
-  const origin = request.headers.get("Origin") || ""
-  const allowOrigin = origin.startsWith("https://")
-    ? origin
-    : "https://ec250edc.africa-zero-frontend.pages.dev"
+function corsHeaders(origin) {
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Origin": origin || "https://africa-zero-frontend.pages.dev",
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
@@ -26,15 +20,16 @@ function corsHeaders(request) {
   }
 }
 
-export async function onRequest({ request, env }) {
+async function handleRequest(request, env, ctx) {
   const url = new URL(request.url)
+  const origin = request.headers.get("Origin") || ""
 
-  // OPTIONS preflight
+  // OPTIONS preflight — for both API and static file requests
   if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders(request) })
+    return new Response(null, { status: 204, headers: corsHeaders(origin) })
   }
 
-  // Proxy /api/* to FastAPI backend
+  // Proxy /api/* to FastAPI backend on Render
   if (url.pathname.startsWith("/api/")) {
     const backendPath = url.pathname + url.search
     const backendUrl = BACKEND_ORIGIN + backendPath
@@ -68,16 +63,25 @@ export async function onRequest({ request, env }) {
       const responseBody = await backendResponse.text()
       return new Response(responseBody, {
         status: backendResponse.status,
-        headers: { ...responseHeaders, ...corsHeaders(request) },
+        headers: { ...responseHeaders, ...corsHeaders(origin) },
       })
     } catch (err) {
       return new Response(
         JSON.stringify({ detail: "Backend unavailable: " + err.message }),
-        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders(request) } }
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders(origin) } }
       )
     }
   }
 
-  // All other requests → serve static files (handled by Pages default)
+  // Serve static files via Cloudflare Pages built-in ASSETS binding
+  if (env && env.ASSETS) {
+    return env.ASSETS.fetch(request)
+  }
+
+  // Development fallback (no ASSETS binding)
   return fetch(request)
+}
+
+export default {
+  fetch: handleRequest,
 }

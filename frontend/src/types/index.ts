@@ -54,10 +54,14 @@ export interface TariffCalcInput {
   destination: DestinationMarket
   fob_value: number
   currency?: 'USD' | 'CNY'
+  quantity_kg?: number
+  freight_override?: number | null
+  exchange_rate?: number | null
 }
 
 export interface TariffBreakdown {
   fob_value: number
+  quantity_kg: number
   freight: number
   insurance: number
   tariff_rate: number
@@ -66,6 +70,7 @@ export interface TariffBreakdown {
   vat_amount: number
   total_cost: number
   savings_vs_mfn: number   // 相比最惠国税率节省的金额
+  exchange_rate: number
 }
 
 export interface TariffCalcResult {
