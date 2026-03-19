@@ -21,7 +21,7 @@ services:
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: DATABASE_URL
-        value: backend/data/africa_zero.db
+        value: data/africa_zero.db
       - key: CORS_ORIGINS
         value: "*"
       - key: POETRY_DISABLED
