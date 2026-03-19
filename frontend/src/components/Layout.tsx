@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 
 const navLinks = [
   { to: '/calculator', label: '关税计算器' },
@@ -8,7 +8,7 @@ const navLinks = [
   { to: '/policy', label: '政策规则' },
 ]
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Layout() {
   const location = useLocation()
 
   return (
@@ -86,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Main content */}
-      <main>{children}</main>
+      <main><Outlet /></main>
 
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-12 mt-16">

@@ -11,7 +11,7 @@ import type {
 } from '../types'
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: 'https://africa-web-wuxs.onrender.com/api/v1',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
