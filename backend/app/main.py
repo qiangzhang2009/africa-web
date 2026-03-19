@@ -36,14 +36,38 @@ app = FastAPI(
 
 # ─── CORS ───────────────────────────────────────────────────────────────────
 import os
-origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+_env_origins = os.getenv("CORS_ORIGINS", "").strip()
+if _env_origins in ("*", "all", "true"):
+    # Allow all origins (for development / open APIs)
+    _allow_all = True
+else:
+    _allow_all = False
+    origins = [o.strip() for o in _env_origins.split(",") if o.strip()] if _env_origins else []
+
+# Default to allowing the production frontend domain
+if not _allow_all and not origins:
+    origins = [
+        "https://africa-web-1.onrender.com",
+        "http://localhost:5173",
+    ]
+
+if _allow_all:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
 app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
