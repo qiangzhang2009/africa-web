@@ -1,0 +1,21 @@
+# render.yaml — Render 自动部署配置
+# Render 会自动检测此文件并配置服务
+# Docs: https://render.com/docs/render-yaml
+
+services:
+  - type: web
+    name: africa-zero-api
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false  # 不写入仓库，从 Render Secrets 读取
+      - key: DATABASE_URL
+        value: data/africa_zero.db
+      - key: CORS_ORIGINS
+        value: "*"
