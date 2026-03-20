@@ -48,27 +48,8 @@ export default function Layout() {
               ))}
             </nav>
 
-            {/* CTA + external links */}
+            {/* CTA */}
             <div className="flex items-center gap-2">
-              {/* ZXQConsulting links - desktop */}
-              <div className="hidden md:flex items-center gap-1">
-                <a
-                  href="https://www.zxqconsulting.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2 py-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium rounded-lg hover:bg-blue-50 transition-colors"
-                >
-                  ZXQConsulting
-                </a>
-                <a
-                  href="https://global2china.zxqconsulting.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2 py-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium rounded-lg hover:bg-emerald-50 transition-colors"
-                >
-                  Global2China
-                </a>
-              </div>
               <Link
                 to="/dashboard"
                 className="text-sm text-slate-600 hover:text-slate-900"
@@ -102,22 +83,6 @@ export default function Layout() {
               {link.label}
             </Link>
           ))}
-          <a
-            href="https://www.zxqconsulting.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="whitespace-nowrap px-3 py-1.5 text-sm text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors"
-          >
-            ZXQConsulting
-          </a>
-          <a
-            href="https://global2china.zxqconsulting.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="whitespace-nowrap px-3 py-1.5 text-sm text-emerald-600 font-medium rounded-lg hover:bg-emerald-50 transition-colors"
-          >
-            Global2China
-          </a>
         </div>
       </nav>
 

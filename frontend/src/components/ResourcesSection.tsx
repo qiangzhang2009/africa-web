@@ -76,13 +76,13 @@ const resourceGroups = [
   },
   {
     icon: <Building2 className="w-5 h-5" />,
-    label: '战略合作',
+    label: '联系我们',
     color: 'text-orange-600 bg-orange-50',
     links: [
       {
-        name: 'Global2China · 海外优品·中国上市',
-        desc: '帮助海外品牌一站式进入中国市场，AI技术赋能全流程落地',
-        url: 'https://global2china.zxqconsulting.com/',
+        name: '咨询合作',
+        desc: '定制官网、AI工具、全球扩张战略方案',
+        url: 'mailto:zxq@zxqconsulting.com',
       },
     ],
   },
