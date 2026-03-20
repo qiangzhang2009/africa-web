@@ -1,6 +1,7 @@
 name = "africa-web-cors-proxy"
 main = "public/_worker.js"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "dist"
 
 # Worker Environment Variables (set via `wrangler secret put`):
 # BACKEND_ORIGIN    = https://africa-web-wuxs.onrender.com
