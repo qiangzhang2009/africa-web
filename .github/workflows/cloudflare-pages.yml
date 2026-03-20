@@ -29,7 +29,7 @@ jobs:
         working-directory: frontend
 
       - name: Build
-        run: npm run build
+        run: npx tsc --noEmit --skipLibCheck 2>/dev/null || true && npm run build
         working-directory: frontend
 
       - name: Deploy to Cloudflare Pages
@@ -39,3 +39,4 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: africa-zero-frontend
           directory: frontend/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
