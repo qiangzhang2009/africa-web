@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
+      - '.github/workflows/cloudflare-pages.yml'
       - '!frontend/dist/**'
       - '!frontend/node_modules/**'
   workflow_dispatch:
