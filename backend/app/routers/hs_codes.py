@@ -25,48 +25,55 @@ def _format_hs(code: str) -> str:
 @router.get("/hs-codes/search")
 async def search_hs_codes(q: str = Query(..., min_length=1), limit: int = Query(default=10, le=50)):
     """Search HS codes by Chinese name or HS code number."""
-    conn = get_db(DB_PATH)
-    cursor = conn.cursor()
-    normalized = _normalize_hs(q)
+    try:
+        conn = get_db(DB_PATH)
+        cursor = conn.cursor()
+    except Exception as e:
+        return {"results": [], "error": f"数据库连接失败: {str(e)}"}
 
+    normalized = _normalize_hs(q)
     results: list[dict] = []
 
     # Exact or prefix HS code match
-    cursor.execute(
-        """
-        SELECT * FROM hs_codes
-        WHERE REPLACE(REPLACE(REPLACE(REPLACE(hs_10, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-           OR REPLACE(REPLACE(REPLACE(REPLACE(hs_8, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-           OR REPLACE(REPLACE(REPLACE(REPLACE(hs_6, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-           OR REPLACE(REPLACE(REPLACE(REPLACE(hs_4, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-        LIMIT ?
-        """,
-        (normalized + "%", normalized + "%", normalized + "%", normalized + "%", limit)
-    )
-    for row in cursor.fetchall():
-        results.append(dict(row))
+    try:
+        cursor.execute(
+            """
+            SELECT * FROM hs_codes
+            WHERE REPLACE(REPLACE(REPLACE(REPLACE(hs_10, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
+               OR REPLACE(REPLACE(REPLACE(REPLACE(hs_8, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
+               OR REPLACE(REPLACE(REPLACE(REPLACE(hs_6, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
+               OR REPLACE(REPLACE(REPLACE(REPLACE(hs_4, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
+            LIMIT ?
+            """,
+            (normalized + "%", normalized + "%", normalized + "%", normalized + "%", limit)
+        )
+        for row in cursor.fetchall():
+            results.append(dict(row))
+    except Exception:
+        pass
 
     # Name fuzzy match
     if len(results) < limit:
-        cursor.execute(
-            "SELECT * FROM hs_codes WHERE name_zh LIKE ? LIMIT ?",
-            (f"%{q}%", limit - len(results))
-        )
-        for row in cursor.fetchall():
-            if not any(r["hs_10"] == dict(row)["hs_10"] for r in results):
-                results.append(dict(row))
+        try:
+            cursor.execute(
+                "SELECT * FROM hs_codes WHERE name_zh LIKE ? LIMIT ?",
+                (f"%{q}%", limit - len(results))
+            )
+            for row in cursor.fetchall():
+                if not any(r["hs_10"] == dict(row)["hs_10"] for r in results):
+                    results.append(dict(row))
+        except Exception:
+            pass
 
     conn.close()
 
-    return {
-        "results": [
-            {
-                "hs_10": r.get("hs_10"),
-                "name_zh": r["name_zh"],
-                "mfn_rate": r["mfn_rate"],
-                "category": r.get("category"),
-                "match_score": 1.0,
-            }
-            for r in results[:limit]
-        ]
-    }
+    return {"results": [
+        {
+            "hs_10": r.get("hs_10"),
+            "name_zh": r["name_zh"],
+            "mfn_rate": r["mfn_rate"],
+            "category": r.get("category"),
+            "match_score": 1.0,
+        }
+        for r in results[:limit]
+    ]}

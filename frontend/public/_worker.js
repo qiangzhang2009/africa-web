@@ -36,6 +36,7 @@ async function handleRequest(request, env, ctx) {
 
     const headers = {}
     request.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "accept-encoding") return // strip — tell backend we don't want compression
       if (key.toLowerCase() !== "host") headers[key] = value
     })
 

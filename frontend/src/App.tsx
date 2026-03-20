@@ -8,6 +8,8 @@ import OriginCheckPage from './pages/OriginCheckPage'
 import PolicyPage from './pages/PolicyPage'
 import PricingPage from './pages/PricingPage'
 import DashboardPage from './pages/DashboardPage'
+import ProductDiscoveryPage from './pages/ProductDiscoveryPage'
+import GettingStartedPage from './pages/GettingStartedPage'
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
           <Route path="policy" element={<PolicyPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="products" element={<ProductDiscoveryPage />} />
+          <Route path="getting-started" element={<GettingStartedPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

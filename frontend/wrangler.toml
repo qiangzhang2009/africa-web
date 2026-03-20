@@ -1,11 +1,10 @@
 name = "africa-web-cors-proxy"
-main = "public/_worker.js"
+# main = "public/_worker.js"   # Pages 项目不使用 main 字段，用 pages_build_output_dir
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "dist"
 
 # Worker Environment Variables (set via `wrangler secret put`):
 # BACKEND_ORIGIN    = https://africa-web-wuxs.onrender.com
-# ALLOWED_ORIGINS   = https://ec250edc.africa-zero-frontend.pages.dev,https://africa-zero-frontend.pages.dev,http://localhost:5173
 # WORKER_ORIGIN     = https://ec250edc.africa-zero-frontend.pages.dev
 
 [observability]

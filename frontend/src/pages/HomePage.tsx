@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Calculator, TrendingUp, Globe, Shield } from 'lucide-react'
+import { ArrowRight, Calculator, TrendingUp, Globe, Shield, ExternalLink } from 'lucide-react'
+import ResourcesSection from '../components/ResourcesSection'
 
 const features = [
   {
@@ -25,10 +26,30 @@ const features = [
 ]
 
 const useCases = [
-  { tag: '咖啡电商', example: '埃塞俄比亚耶加雪菲生豆，20kg，FOB $6/kg → 到岸成本？回本几包？' },
-  { tag: '可可贸易商', example: '加纳可可豆进口中国，增值加工后返销欧洲 → 关税套利空间？' },
-  { tag: '坚果出口商', example: '坦桑尼亚腰果，目的地中国 vs 欧盟 → 哪个市场净利润更高？' },
-  { tag: '光伏组装厂', example: '中国组件→南非组装→返销中国 → 能否认定非洲原产、零关税？' },
+  {
+    tag: '进出口贸易商',
+    example: '埃塞俄比亚咖啡豆进口，零关税后每柜省$12,000 —— 值不值得锁定长期订单？',
+  },
+  {
+    tag: '货代 & 报关行顾问',
+    example: '客户问到岸价？用AfricaZero分钟级出含税报价单，专业感拉满。',
+  },
+  {
+    tag: '外贸 SOHO / 创业选品',
+    example: '想从非洲进货但不确定成本？一键算出FOB到岸总费用，判断要不要继续。',
+  },
+  {
+    tag: '消费品品牌采购',
+    example: '天然香料、坚果、可可脂 —— 评估非洲直采替代欧洲中间商的关税节省空间。',
+  },
+  {
+    tag: '中资驻非企业回国采购',
+    example: '矿山设备配件、服装面料返销中国，AfCFTA规则叠加零关税，到底能省多少？',
+  },
+  {
+    tag: '农产品大宗进口商',
+    example: '芝麻、蓖麻籽、皮革 —— 非洲主产国的零关税窗口期，成本精算后再决定。',
+  },
 ]
 
 export default function HomePage() {
@@ -124,7 +145,7 @@ export default function HomePage() {
               典型使用场景
             </h2>
             <p className="text-slate-600">
-              无论你是咖啡电商、可可贸易商还是光伏组装厂，都能找到答案。
+              无论你是贸易商、货代、外贸 SOHO 还是企业采购，都能找到答案。
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -136,6 +157,89 @@ export default function HomePage() {
                   </span>
                 </div>
                 <p className="text-slate-600 text-sm leading-relaxed">{uc.example}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Resources */}
+      <ResourcesSection />
+
+      {/* Beginner Guide */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <span className="inline-block px-3 py-1 bg-orange-50 text-orange-700 text-xs font-semibold rounded-full mb-3">新手必读</span>
+            <h2 className="text-3xl font-heading font-bold text-slate-900 mb-4">
+              不知道怎么开始？从这里走一遍
+            </h2>
+            <p className="text-slate-600 max-w-xl mx-auto">
+              零关税政策听起来很美，但"我能做什么品类？""具体怎么落地？"才是真正的门槛。我们把这条路拆成了 4 步。
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                step: '1',
+                icon: '🛍️',
+                title: '探索可选品类',
+                desc: '非洲有什么货值得做？我们整理了53国的优势产品，按"零关税 + 利润空间 + 启动门槛"三维度筛选。',
+                cta: '浏览品类清单',
+                to: '/products',
+              },
+              {
+                step: '2',
+                icon: '💰',
+                title: '算清到岸成本',
+                desc: 'FOB货值 + 运费 + 关税 + 增值税 = 你的真实成本。和欧洲货源对比，才知道省了多少。',
+                cta: '成本精算器',
+                to: '/cost-calculator',
+              },
+              {
+                step: '3',
+                icon: '📋',
+                title: '验证原产地资格',
+                desc: '你的货真的"够非洲"吗？符合税则改变规则或40%增值规则，才能拿到零关税原产地证书。',
+                cta: '自测原产地',
+                to: '/origin-check',
+              },
+              {
+                step: '4',
+                icon: '🤝',
+                title: '找货代 / 贸促会',
+                desc: '拿到原产地证书后，联系货代报关或通过贸促会办理。AfricaZero提供全流程节点提醒。',
+                cta: '了解贸促会流程',
+                to: 'https://www.ccpit.org/',
+                external: true,
+              },
+            ].map((item) => (
+              <div key={item.step} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-lg transition-shadow">
+                <div className="text-3xl mb-4">{item.icon}</div>
+                <div className="inline-flex items-center justify-center w-6 h-6 bg-orange-100 text-orange-700 text-xs font-bold rounded-full mb-3">
+                  {item.step}
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed mb-4">{item.desc}</p>
+                {item.external ? (
+                  <a
+                    href={item.to}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-orange-600 font-medium hover:text-orange-700 flex items-center gap-1"
+                  >
+                    {item.cta}
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                ) : (
+                  <Link
+                    to={item.to}
+                    className="text-sm text-orange-600 font-medium hover:text-orange-700 flex items-center gap-1"
+                  >
+                    {item.cta}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                )}
               </div>
             ))}
           </div>

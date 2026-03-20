@@ -37,10 +37,15 @@ export async function calculateImportCost(input: ImportCostInput): Promise<Impor
 
 // ─── HS Code Search ──────────────────────────────────────────────────────────
 export async function searchHSCodes(query: string, limit = 10): Promise<HSSearchResult[]> {
-  const { data } = await api.get<{ results: HSSearchResult[] }>('/hs-codes/search', {
-    params: { q: query, limit },
-  })
-  return data.results
+  try {
+    const { data } = await api.get<{ results?: HSSearchResult[]; data?: HSSearchResult[] } | null>('/hs-codes/search', {
+      params: { q: query, limit },
+    })
+    if (!data) return []
+    return data.results ?? data.data ?? []
+  } catch {
+    return []
+  }
 }
 
 // ─── Origin Check ─────────────────────────────────────────────────────────────
@@ -51,10 +56,10 @@ export async function checkOrigin(input: OriginCheckInput): Promise<OriginCheckR
 
 // ─── Countries ────────────────────────────────────────────────────────────────
 export async function listCountries(market?: string): Promise<Country[]> {
-  const { data } = await api.get<{ countries: Country[] }>('/countries', {
+  const { data } = await api.get<{ countries?: Country[]; data?: Country[] }>('/countries', {
     params: market ? { market } : {},
   })
-  return data.countries
+  return data.countries ?? data.data ?? []
 }
 
 // ─── Subscription ─────────────────────────────────────────────────────────────

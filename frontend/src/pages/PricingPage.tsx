@@ -127,10 +127,10 @@ export default function PricingPage() {
 
       <div className="text-center">
         <p className="text-sm text-slate-500 mb-3">
-          支付方式：微信 / 支付宝收款码转账，付款后联系客服开通
+          支付方式：微信 / 支付宝收款码转账，请联系我们付款后开通
         </p>
         <p className="text-sm text-slate-400">
-          企业对公转账、发票需求请联系：<a href="mailto:hello@africa-zero.com" className="text-primary-600 hover:underline">hello@africa-zero.com</a>
+          企业对公转账、发票需求请联系：<a href="mailto:zxq@zxqconsulting.com" className="text-primary-600 hover:underline">zxq@zxqconsulting.com</a>
         </p>
       </div>
 

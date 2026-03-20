@@ -32,3 +32,6 @@ Thumbs.db
 # Logs
 *.log
 .gstack/
+
+# Wrangler cache
+.wrangler/

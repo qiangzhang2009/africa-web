@@ -136,7 +136,7 @@ export default function OriginCheckPage() {
             </div>
           )}
 
-          {result.reasons.length > 0 && (
+          {(result.reasons?.length ?? 0) > 0 && (
             <div className="mb-3">
               <div className="text-sm font-medium text-slate-700 mb-2">判断依据</div>
               <ul className="space-y-1">
@@ -149,7 +149,7 @@ export default function OriginCheckPage() {
             </div>
           )}
 
-          {result.suggestions.length > 0 && (
+          {(result.suggestions?.length ?? 0) > 0 && (
             <div>
               <div className="text-sm font-medium text-slate-700 mb-2">建议</div>
               <ul className="space-y-1">
