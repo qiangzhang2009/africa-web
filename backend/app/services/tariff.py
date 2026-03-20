@@ -50,12 +50,12 @@ RETAIL_REFERENCE: dict[str, float] = {
 
 CN_ZERO_TARIFF_COUNTRIES = {
     "ET", "ZA", "KE", "GH", "CI", "CM", "TZ", "RW", "UG", "MZ", "NG", "EG", "MA", "DZ", "TN",
-    "SD", "AO", "BJ", "BW", "BF", "BI", "CV", "CF", "TD", "CD", "CG", "DJ", "GQ", "ER", "SZ",
+    "SD", "AO", "BJ", "BW", "BF", "BI", "CV", "CF", "TD", "CD", "CG", "DJ", "GQ", "ER",
     "GA", "GM", "GN", "GW", "LS", "LR", "LY", "MG", "MW", "ML", "MR", "MU", "NA", "NE", "SN",
-    "SC", "SL", "SO", "SS", "TG", "ZM", "ZW",
-}
+    "SC", "SL", "SO", "SS", "TG", "ZM", "ZW", "KM", "ST",
+}  # 53个与中国建交的非洲国家（不含斯威士兰，其与台湾建交）
 
-EU_EPA_COUNTRIES = {"GH", "CI", "CM", "EG", "MZ", "MA", "TN"}
+EU_EPA_COUNTRIES = {"GH", "CI", "CM", "KE", "MZ"}  # interim/stepping-stone EPAs (2024)
 
 
 # ─── Helper functions ──────────────────────────────────────────────────────────
@@ -189,6 +189,7 @@ def calculate_tariff(
         freight_usd = freight_override
     else:
         freight_usd = shipping_rate_usd * effective_qty
+    # Insurance: ICC(C) minimum coverage, 0.5% of FOB per international shipping custom
     insurance_usd = fob_value * 0.005
     usd_cny = exchange_rate if exchange_rate else get_usd_cny_rate()
 
@@ -276,6 +277,7 @@ def calculate_import_cost(
     shipping_rate = get_shipping_rate(origin_upper)
     effective_qty = max(quantity_kg, 10)
     freight_usd = effective_qty * shipping_rate
+    # Insurance: ICC(C) minimum coverage, 0.5% of FOB per international shipping custom
     insurance_usd = fob_value * 0.005
     usd_cny = get_usd_cny_rate()
     customs_clearance = CUSTOMS_CLEARANCE_BASE + quantity_kg * CUSTOMS_CLEARANCE_PER_KG
