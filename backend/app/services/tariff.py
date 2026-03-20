@@ -1,8 +1,11 @@
 """Tariff and cost calculation service."""
 import os
 import re
+import json
 from pathlib import Path
 from typing import Optional
+
+import httpx
 
 from app.models.database import get_db
 from app.schemas import TariffBreakdown, ImportCostBreakdown
@@ -10,6 +13,7 @@ from app.schemas import TariffBreakdown, ImportCostBreakdown
 # ─── Constants ──────────────────────────────────────────────────────────────────
 
 DEFAULT_USD_CNY = 7.25  # fallback exchange rate
+EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY", "272fd8682bc120db4597b813")
 
 # Shipping rate: USD/kg (海运散货, Africa -> China)
 AFRICA_SHIPPING_RATES: dict[str, float] = {
@@ -62,7 +66,21 @@ def get_shipping_rate(origin_country: str) -> float:
 
 
 def get_usd_cny_rate() -> float:
-    """Get USD→CNY rate. Falls back to DEFAULT_USD_CNY if no API key."""
+    """Get USD→CNY rate from ExchangeRate-API. Falls back to DEFAULT_USD_CNY on failure."""
+    try:
+        url = (
+            f"https://v6.exchangerate-api.com/v6/{EXCHANGE_RATE_API_KEY}"
+            "/pair/USD/CNY"
+        )
+        with httpx.Client(timeout=5.0) as client:
+            resp = client.get(url)
+        if resp.status_code == 200:
+            data = resp.json()
+            rate = data.get("conversion_rate")
+            if rate and rate > 0:
+                return float(rate)
+    except Exception:
+        pass
     return DEFAULT_USD_CNY
 
 

@@ -118,14 +118,7 @@ const GROUPED_PRESETS = PRESETS.reduce<Record<string, typeof PRESETS>>((acc, p) 
   return acc
 }, {})
 
-// ─── Freight method presets ──────────────────────────────────────────────────
-const FREIGHT_METHODS = [
-  { label: '海运拼箱（LCL）', value: null as null | number, note: '$3.5-5.5/kg', multiplier: 1 },
-  { label: '空运拼货', value: null as null | number, note: '$6-8/kg', multiplier: 1 },
-  { label: '整柜海运（FCL）', value: null as null | number, note: '$2-3/kg（大货）', multiplier: 1 },
-  { label: '手动输入', value: null as null | number, note: '自定义运费', multiplier: 1 },
-]
-
+// ─── Default exchange rate ────────────────────────────────────────────────────
 const DEFAULT_EXCHANGE_RATE = 7.25
 
 function fmt(n: number, currency = 'CNY') {
@@ -502,20 +495,25 @@ export default function CalculatorPage() {
               </p>
             </div>
 
-            {result.breakdown && (
+            {result.breakdown && (() => {
+              const bd = result.breakdown
+              const qtyKg = bd.quantity_kg
+              const fxRate = bd.exchange_rate
+              const freightPerKg = qtyKg > 0 ? (bd.freight / qtyKg).toFixed(2) : '—'
+              return (
               <div>
                 <h3 className="font-semibold text-slate-900 mb-4">成本分解</h3>
                 <div className="space-y-3">
                   {[
-                    { label: 'FOB货值', value: result.breakdown.fob_value, unit: 'USD', note: `${result.breakdown.quantity_kg} kg` },
-                    { label: '国际运费', value: result.breakdown.freight, unit: 'USD', note: `参考：${result.breakdown.freight / Math.max(result.breakdown.quantity_kg, 1).toFixed(2)} $/kg` },
-                    { label: '保险（约0.5%）', value: result.breakdown.insurance, unit: 'USD' },
-                    { label: `关税税率`, value: `${(result.breakdown.tariff_rate * 100).toFixed(1)}%`, unit: '' },
-                    { label: '关税金额', value: result.breakdown.tariff_amount, unit: 'USD', note: '折合CNY' },
-                    { label: `增值税税率`, value: `${(result.breakdown.vat_rate * 100).toFixed(0)}%`, unit: '' },
-                    { label: '增值税', value: result.breakdown.vat_amount, unit: 'CNY' },
-                    { label: `汇率`, value: result.breakdown.exchange_rate.toFixed(4), unit: '' },
-                    { label: '到岸总成本', value: result.breakdown.total_cost, unit: 'CNY', highlight: true },
+                    { label: 'FOB货值', value: bd.fob_value, unit: 'USD', note: `${qtyKg} kg` },
+                    { label: '国际运费', value: bd.freight, unit: 'USD', note: `参考：${freightPerKg} $/kg` },
+                    { label: '保险（约0.5%）', value: bd.insurance, unit: 'USD' },
+                    { label: '关税税率', value: `${(bd.tariff_rate * 100).toFixed(1)}%`, unit: '' },
+                    { label: '关税金额', value: bd.tariff_amount, unit: 'CNY' },
+                    { label: `增值税税率`, value: `${(bd.vat_rate * 100).toFixed(0)}%`, unit: '' },
+                    { label: '增值税', value: bd.vat_amount, unit: 'CNY' },
+                    { label: `汇率 USD→CNY`, value: fxRate.toFixed(4), unit: '' },
+                    { label: '到岸总成本', value: bd.total_cost, unit: 'CNY', highlight: true },
                   ].map((item) => (
                     <div
                       key={item.label}
@@ -533,15 +531,16 @@ export default function CalculatorPage() {
                     </div>
                   ))}
 
-                  {result.breakdown.savings_vs_mfn > 0 && (
+                  {bd.savings_vs_mfn > 0 && (
                     <div className="flex justify-between items-center py-3 px-4 bg-green-50 rounded-lg text-green-800 font-semibold">
                       <span>相比MFN税率节省</span>
-                      <span>{fmt(result.breakdown.savings_vs_mfn, 'CNY')}</span>
+                      <span>{fmt(bd.savings_vs_mfn, 'CNY')}</span>
                     </div>
                   )}
                 </div>
               </div>
-            )}
+              )
+            })()}
 
             {!isPro && (
               <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
