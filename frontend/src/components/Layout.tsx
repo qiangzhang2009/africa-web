@@ -170,30 +170,6 @@ export default function Layout() {
               </ul>
             </div>
 
-            {/* ZXQConsulting */}
-            <div>
-              <h4 className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center shrink-0">
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/></svg>
-                </div>
-                ZXQConsulting
-              </h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <a href="https://www.zxqconsulting.com/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 text-blue-300">
-                    ZXQConsulting 官网
-                  </a>
-                </li>
-                <li>
-                  <a href="https://global2china.zxqconsulting.com/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 text-blue-300">
-                    Global2China 进口咨询
-                  </a>
-                </li>
-                <li><a href="https://www.zxqconsulting.com/#services" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">服务项目</a></li>
-                <li><a href="https://www.zxqconsulting.com/#about" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400">关于我们</a></li>
-              </ul>
-            </div>
-
             {/* Contact */}
             <div>
               <h4 className="text-white text-sm font-semibold mb-3">联系</h4>
