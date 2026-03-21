@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && cp public/_worker.js dist/_worker.js",
+    "build": "tsc && vite build && cp vercel.json dist/ && cp public/_worker.js dist/_worker.js",
     "preview": "vite preview"
   },
   "dependencies": {
