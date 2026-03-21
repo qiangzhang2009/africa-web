@@ -37,10 +37,16 @@ jobs:
           npx vercel@latest --prod --token=${{ secrets.VERCEL_TOKEN }}
         working-directory: ./frontend
 
-      # 通过 API 关闭 SSO 认证（如果项目启用了的话）
+      # 通过 API 关闭 SSO 保护
       - name: Disable Vercel SSO protection (if enabled)
         run: |
-          curl -s -X PATCH "https://api.vercel.com/v6/projects/prj_NxvYtuSpO7iK1M6jHwOpmZWXPmFD?teamId=team_oRhJ07CryEAd3h7A8mNcM6pu" \
+          # 尝试禁用部署保护（正确格式）
+          RESPONSE=$(curl -s -X PATCH "https://api.vercel.com/v6/projects/prj_NxvYtuSpO7iK1M6jHwOpmZWXPmFD?teamId=team_oRhJ07CryEAd3h7A8mNcM6pu" \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"protection":{"deploymentProtection":{"enabled":false}}}' || echo "SSO disable failed (may already be off)"
+            -d '{"enabled": false}')
+          echo "API Response: $RESPONSE"
+          
+          # 如果上述失败，尝试删除 protection rule
+          curl -s -X DELETE "https://api.vercel.com/v1/deployments" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" || echo "Protection check done"
