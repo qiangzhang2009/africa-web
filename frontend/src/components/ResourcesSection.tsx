@@ -1,4 +1,5 @@
 import { ExternalLink, Banknote, ScrollText, BarChart3, Ship, Building2 } from 'lucide-react'
+import { track } from '../utils/track'
 
 const resourceGroups = [
   {
@@ -122,6 +123,7 @@ export default function ResourcesSection() {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => track.click(`resource_link_${link.name}`, 'external_resource', { url: link.url, group: group.label })}
                     className="group flex items-start gap-2.5 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
                   >
                     <div className="shrink-0 mt-0.5 text-slate-400 group-hover:text-primary-500 transition-colors">

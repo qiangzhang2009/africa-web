@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle, AlertCircle, TrendingUp, Calculator, Zap, Book
 import { PRODUCTS, CATEGORY_GROUPS, filterProducts, type Product } from '../data/products'
 import { calculateImportCost } from '../utils/api'
 import { useAppStore } from '../hooks/useAppStore'
+import { track } from '../utils/track'
 import type { ImportCostResult } from '../types'
 
 // Country name to code mapping
@@ -35,6 +36,7 @@ export default function ProductDiscoveryPage() {
     const originCode = product.originCountryCodes[0]
     if (!product.defaultQty || !product.defaultPrice || !originCode) {
       setPreviewError('该品类暂无默认参数，请手动调整')
+      track.productQuickPreview(product.name, false)
       return
     }
 
@@ -50,8 +52,10 @@ export default function ProductDiscoveryPage() {
         origin: originCode,
       })
       setPreviewResult({ product, data })
+      track.productQuickPreview(product.name, true)
     } catch {
       setPreviewError('计算失败，请稍后重试')
+      track.productQuickPreview(product.name, false)
     } finally {
       setPreviewLoading(false)
     }
@@ -116,12 +120,13 @@ export default function ProductDiscoveryPage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/getting-started"
+                onClick={() => track.productNav('/getting-started')}
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 新手入门完整路线图
               </Link>
               <button
-                onClick={() => setActiveFilter('easy')}
+                onClick={() => { setActiveFilter('easy'); track.productFilterChange('easy', filterProducts(PRODUCTS, 'easy').length) }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-orange-50 text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:border-orange-300 transition-colors"
               >
                 查看「入门级」品类
@@ -136,7 +141,7 @@ export default function ProductDiscoveryPage() {
         {CATEGORY_GROUPS.map((f) => (
           <button
             key={f.value}
-            onClick={() => setActiveFilter(f.value)}
+            onClick={() => { setActiveFilter(f.value); track.productFilterChange(f.value, filterProducts(PRODUCTS, f.value).length) }}
             className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
               activeFilter === f.value
                 ? 'bg-primary-500 text-white border-primary-500'
@@ -169,6 +174,7 @@ export default function ProductDiscoveryPage() {
                 onClick={() => {
                   setExpandedProduct(isExpanded ? null : product.hsCode)
                   setPreviewResult(null)
+                  if (!isExpanded) track.productExpand(product.name, product.hsCode)
                 }}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -291,6 +297,7 @@ export default function ProductDiscoveryPage() {
                         e.stopPropagation()
                         if (isInInterestList(product.hsCode)) {
                           removeFromInterestList(product.hsCode)
+                          track.productRemoveInterest(product.name, product.hsCode)
                         } else {
                           addToInterestList({
                             hsCode: product.hsCode,
@@ -304,6 +311,7 @@ export default function ProductDiscoveryPage() {
                             defaultQty: product.defaultQty,
                             defaultPrice: product.defaultPrice,
                           })
+                          track.productAddInterest(product.name, product.hsCode)
                         }
                       }}
                       className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
@@ -341,6 +349,7 @@ export default function ProductDiscoveryPage() {
                     </button>
                     <Link
                       to={`/cost-calculator?product=${encodeURIComponent(product.name)}&qty=${product.defaultQty || ''}&price=${product.defaultPrice || ''}&origin=${product.originCountryCodes[0] || ''}`}
+                      onClick={() => track.productNav('/cost-calculator', { product: product.name, origin: product.originCountryCodes[0] || '' })}
                       className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                       <Calculator className="w-4 h-4" />
@@ -348,12 +357,14 @@ export default function ProductDiscoveryPage() {
                     </Link>
                     <Link
                       to={`/calculator?hs=${product.hsCode}&origin=${product.originCountryCodes[0] || ''}`}
+                      onClick={() => track.productNav('/calculator', { hs: product.hsCode, origin: product.originCountryCodes[0] || '' })}
                       className="flex items-center gap-1.5 px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                       关税计算 →
                     </Link>
                     <Link
                       to={`/origin-check?hs=${product.hsCode}&origin=${product.originCountryCodes[0] || ''}`}
+                      onClick={() => track.productNav('/origin-check', { hs: product.hsCode, origin: product.originCountryCodes[0] || '' })}
                       className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-300 hover:border-primary-400 text-slate-700 text-sm font-medium rounded-lg transition-colors"
                     >
                       原产地自测 →

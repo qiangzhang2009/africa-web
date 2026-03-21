@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { checkOrigin } from '../utils/api'
+import { track } from '../utils/track'
 import type { OriginCheckResult } from '../types'
 
 export default function OriginCheckPage() {
@@ -25,22 +26,29 @@ export default function OriginCheckPage() {
   async function handleCheck() {
     if (!hsCode || !origin || !processing) {
       setError('请填写必填项')
+      track.calcError('origin_check_missing_fields')
       return
     }
     setLoading(true)
     setError(null)
     setResult(null)
     try {
-      const data = await checkOrigin({
+      const input = {
         product_name: '',
         hs_code: hsCode,
         origin,
         processing_steps: processing.split('\n').filter(Boolean),
         material_sources: materials.split('\n').filter(Boolean),
-      })
+      }
+      const data = await checkOrigin(input)
       setResult(data)
+      track.originSubmit({ ...input, hs_code: hsCode, origin } as unknown as Record<string, unknown>, true)
+      track.originResultShown(data as unknown as Record<string, unknown>)
     } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'network_error'
       setError(err instanceof Error ? err.message : '判定失败')
+      track.originSubmit({ hs_code: hsCode, origin, processing_steps: processing } as unknown as Record<string, unknown>, false)
+      track.calcError(`origin_check_error: ${msg}`)
     } finally {
       setLoading(false)
     }

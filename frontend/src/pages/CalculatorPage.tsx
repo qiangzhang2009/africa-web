@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '../hooks/useAppStore'
 import { calculateTariff, searchHSCodes } from '../utils/api'
+import { track } from '../utils/track'
 import type { TariffCalcResult, DestinationMarket, HSSearchResult } from '../types'
 
 // ─── Product form presets ────────────────────────────────────────────────────
@@ -187,6 +188,7 @@ export default function CalculatorPage() {
     setFreightManual('')
     setHsSearch('')
     setShowHsDropdown(false)
+    track.calcSelectPreset(label, p.group, p.hs10, p.origin)
   }
 
   // ── HS search ──
@@ -207,6 +209,7 @@ export default function CalculatorPage() {
         const results = await searchHSCodes(val, 8)
         setHsSuggestions(results)
         setShowHsDropdown(true)
+        track.calcSearchHs(val, results.length)
       } catch {
         setHsSuggestions([])
       } finally {
@@ -236,10 +239,12 @@ export default function CalculatorPage() {
   async function handleCalculate() {
     if (!fobValue || parseFloat(fobValue) <= 0) {
       setError('请输入有效的FOB货值')
+      track.calcError('invalid_fob_value')
       return
     }
     if (!isPro && remainingToday <= 0) {
       setError('今日免费次数已用完，请开通 Pro 版')
+      track.calcError('quota_exceeded')
       return
     }
 
@@ -252,6 +257,15 @@ export default function CalculatorPage() {
         ? parseFloat(freightManual)
         : null
 
+      const input = {
+        hs_code: hsCode,
+        origin,
+        destination,
+        fob_value: parseFloat(fobValue),
+        quantity_kg: parseFloat(quantityKg),
+        freight_mode: freightMode,
+      }
+
       const data = await calculateTariff({
         hs_code: hsCode,
         origin_country: origin,
@@ -262,9 +276,17 @@ export default function CalculatorPage() {
         exchange_rate: parseFloat(exchangeRate),
       })
       setResult(data)
-      if (data.success) decrementFreeQuery()
-    } catch {
+      track.calcSubmit(input, data.success)
+      if (data.success) {
+        track.calcResultShown(data as unknown as Record<string, unknown>)
+        decrementFreeQuery()
+      } else {
+        track.calcError(`calc_failed: ${data.message}`)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'network_error'
       setError('计算失败，请检查网络后重试')
+      track.calcError(msg)
     } finally {
       setLoading(false)
     }
@@ -381,7 +403,7 @@ export default function CalculatorPage() {
               <p className="block text-sm font-medium text-slate-700 mb-1.5">目的地市场 <span className="text-red-500">*</span></p>
               <select
                 value={destination}
-                onChange={(e) => setDestination(e.target.value as DestinationMarket)}
+                onChange={(e) => { setDestination(e.target.value as DestinationMarket); track.calcChangeDestination(e.target.value) }}
                 className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="CN">🇨🇳 中国（零关税）</option>

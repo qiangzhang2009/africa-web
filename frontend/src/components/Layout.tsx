@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { track } from '../utils/track'
 import InterestListPanel from '../components/InterestListPanel'
 
 const navLinks = [
@@ -53,12 +54,14 @@ export default function Layout() {
             <div className="flex items-center gap-2">
               <Link
                 to="/dashboard"
+                onClick={() => track.pricingCtaClick('free', '我的面板')}
                 className="text-sm text-slate-600 hover:text-slate-900"
               >
                 我的面板
               </Link>
               <Link
                 to="/pricing"
+                onClick={() => track.pricingCtaClick('pro', 'nav_cta')}
                 className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 开通 Pro
@@ -117,6 +120,7 @@ export default function Layout() {
                 href="https://www.zxqconsulting.com/"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track.click('footer_zxqconsulting', 'external')}
                 className="inline-flex items-center gap-2 bg-white text-blue-700 px-6 py-2.5 rounded-full font-semibold text-sm hover:shadow-xl transition-all hover:scale-105"
               >
                 访问 ZXQConsulting 官网
@@ -126,6 +130,7 @@ export default function Layout() {
                 href="https://global2china.zxqconsulting.com/"
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track.click('footer_global2china', 'external')}
                 className="inline-flex items-center gap-2 bg-white/10 text-white border border-white/30 px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-white/20 transition-colors"
               >
                 Global2China 进口咨询
@@ -176,10 +181,11 @@ export default function Layout() {
 
             {/* Contact */}
             <div>
-              <h4 className="text-white text-sm font-semibold mb-3">联系</h4>
+              <h4 className="text-white text-sm font-semibold mb-3">联系我们</h4>
               <ul className="space-y-2 text-sm">
-                <li>需要定制官网或咨询方案？</li>
+                <li>需要搭建独立站或深度定制非洲贸易方案？</li>
                 <li><a href="mailto:zxq@zxqconsulting.com" className="hover:text-white">zxq@zxqconsulting.com</a></li>
+                <li>微信公众号/视频号:张小强出海</li>
               </ul>
             </div>
           </div>

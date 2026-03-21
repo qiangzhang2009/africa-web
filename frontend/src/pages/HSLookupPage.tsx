@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { searchHSCodes } from '../utils/api'
+import { track } from '../utils/track'
 import type { HSSearchResult } from '../types'
 
 // ─── African trade-friendly categories ──────────────────────────────────────
@@ -109,6 +110,8 @@ export default function HSLookupPage() {
       setResults(data ?? [])
       // 检查是否有非零关税品类，给出通用引导
       const hasNonZero = data?.some(r => r.zero_tariff === false)
+      const zeroCount = data?.filter(r => r.zero_tariff === true).length ?? 0
+      track.hsSearch(q.trim(), data?.length ?? 0, zeroCount)
       if (hasNonZero) {
         setSearchGuidance('以上结果中，非零关税品类已用红色标注。零关税节省 = MFN税率（最惠国税率）。部分品类（汽车、电子)另有3C认证要求，请确认后再投入。')
       }
@@ -199,7 +202,7 @@ export default function HSLookupPage() {
             {['咖啡', '可可', '腰果', '芝麻', '铜矿', '钴矿', '锰矿', '生皮'].map((word) => (
               <button
                 key={word}
-                onClick={() => { setQuery(word); handleSearch(word) }}
+                onClick={() => { setQuery(word); handleSearch(word); track.hsSearch(word, -1, 0) }}
                 className="px-3 py-1.5 bg-white border border-slate-300 text-slate-600 text-sm rounded-lg hover:border-primary-400 hover:text-primary-600 transition-colors"
               >
                 {word}
@@ -304,7 +307,7 @@ export default function HSLookupPage() {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.label}
-                onClick={() => setActiveCategory(activeCategory === cat.label ? null : cat.label)}
+                onClick={() => { setActiveCategory(activeCategory === cat.label ? null : cat.label); track.hsBrowseCategory(cat.label) }}
                 className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
                   activeCategory === cat.label
                     ? 'bg-primary-500 text-white border-primary-500'
@@ -334,7 +337,7 @@ export default function HSLookupPage() {
                   {cat.keywords.map((kw) => (
                     <button
                       key={kw}
-                      onClick={() => { setQuery(kw); handleSearch(kw) }}
+                      onClick={() => { setQuery(kw); handleSearch(kw); track.hsSearch(kw, -1, 0) }}
                       className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg hover:border-primary-300 hover:text-primary-600 transition-colors"
                     >
                       搜索「{kw}」
@@ -358,6 +361,7 @@ export default function HSLookupPage() {
               <Link
                 key={card.to}
                 to={card.to}
+                onClick={() => track.hsQuickLink(card.to)}
                 className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow group"
               >
                 <div className="text-2xl mb-2">{card.icon}</div>

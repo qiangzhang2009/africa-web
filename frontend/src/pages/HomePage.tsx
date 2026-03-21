@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Calculator, TrendingUp, Globe, Shield, ExternalLink } from 'lucide-react'
+import { track } from '../utils/track'
 import ResourcesSection from '../components/ResourcesSection'
 
 const features = [
@@ -83,6 +84,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               to="/calculator"
+              onClick={() => track.homeCtaClick('开始计算关税', '/calculator')}
               className="inline-flex items-center gap-2 px-8 py-4 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary-500/30"
             >
               开始计算关税
@@ -90,6 +92,7 @@ export default function HomePage() {
             </Link>
             <Link
               to="/cost-calculator"
+              onClick={() => track.homeCtaClick('成本精算器', '/cost-calculator')}
               className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl border border-white/20 transition-all"
             >
               成本精算器
@@ -226,6 +229,7 @@ export default function HomePage() {
                     href={item.to}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => track.homeCtaClick(`新手入门-${item.step}`, item.to)}
                     className="text-sm text-orange-600 font-medium hover:text-orange-700 flex items-center gap-1"
                   >
                     {item.cta}
@@ -234,6 +238,7 @@ export default function HomePage() {
                 ) : (
                   <Link
                     to={item.to}
+                    onClick={() => track.homeCtaClick(`新手入门-${item.step}`, item.to)}
                     className="text-sm text-orange-600 font-medium hover:text-orange-700 flex items-center gap-1"
                   >
                     {item.cta}
@@ -257,6 +262,7 @@ export default function HomePage() {
           </p>
           <Link
             to="/calculator"
+            onClick={() => track.homeCtaClick('立即开始计算', '/calculator')}
             className="inline-flex items-center gap-2 px-8 py-4 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-xl transition-all"
           >
             立即开始计算

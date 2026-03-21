@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { calculateImportCost } from '../utils/api'
+import { track } from '../utils/track'
 import type { ImportCostResult } from '../types'
 
 function fmt(n: number) {
@@ -83,26 +84,37 @@ export default function CostCalculatorPage() {
     setQuantityKg(item.qty)
     setFobPerKg(item.price)
     setOrigin(item.origin.code)
+    track.costSelectPreset(item.label, item.origin.code)
   }
 
   async function handleCalc() {
     if (!productName || !quantityKg || !fobPerKg) {
       setError('请填写所有必填项，或从下方选择一个品类')
+      track.calcError('cost_calc_missing_fields')
       return
     }
     setLoading(true)
     setError(null)
     setResult(null)
     try {
-      const data = await calculateImportCost({
+      const input = {
         product_name: productName,
         quantity_kg: parseFloat(quantityKg),
         fob_per_kg: parseFloat(fobPerKg),
         origin,
-      })
+      }
+      const data = await calculateImportCost(input)
       setResult(data)
-    } catch {
+      track.costSubmit(input, data.success)
+      if (data.success) {
+        track.costResultShown(data as unknown as Record<string, unknown>)
+      } else {
+        track.calcError(`cost_calc_failed: ${data.message}`)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'network_error'
       setError('计算失败，请稍后重试。如果问题持续，请检查网络连接。')
+      track.calcError(msg)
     } finally {
       setLoading(false)
     }
@@ -145,7 +157,7 @@ export default function CostCalculatorPage() {
             {PRESET_CATEGORIES.map((cat) => (
               <button
                 key={cat.label}
-                onClick={() => setActiveCategory(cat.label)}
+                onClick={() => { setActiveCategory(cat.label); track.costSelectCategory(cat.label) }}
                 className={`px-3 py-1 text-xs rounded-full border transition-colors font-medium ${
                   activeCategory === cat.label
                     ? 'bg-orange-500 text-white border-orange-500'

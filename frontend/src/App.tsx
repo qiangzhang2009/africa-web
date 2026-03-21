@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import CalculatorPage from './pages/CalculatorPage'
@@ -10,10 +11,20 @@ import PricingPage from './pages/PricingPage'
 import DashboardPage from './pages/DashboardPage'
 import ProductDiscoveryPage from './pages/ProductDiscoveryPage'
 import GettingStartedPage from './pages/GettingStartedPage'
+import { track } from './utils/track'
+
+function TrackPageView() {
+  const location = useLocation()
+  useEffect(() => {
+    track.page({ path: location.pathname, search: location.search })
+  }, [location])
+  return null
+}
 
 export default function App() {
   return (
     <BrowserRouter>
+      <TrackPageView />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />

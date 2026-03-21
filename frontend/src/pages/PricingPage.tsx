@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { track } from '../utils/track'
 
 const plans = [
   {
@@ -116,6 +117,7 @@ export default function PricingPage() {
             ) : (
               <Link
                 to="/dashboard"
+                onClick={() => track.pricingCtaClick(plan.id, plan.name)}
                 className={`block w-full text-center py-2.5 rounded-xl text-sm font-medium transition-colors ${plan.ctaStyle}`}
               >
                 {plan.cta}
