@@ -32,15 +32,6 @@ jobs:
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
 
-      - name: Install Vercel CLI and configure routing
-        run: |
-          npm install -g vercel@latest
-          cd frontend
-          vercel link --token=${{ secrets.VERCEL_TOKEN }}
-          vercel project rename "africa-zero" --token=${{ secrets.VERCEL_TOKEN }} --yes 2>/dev/null || true
-          # 设置路由配置
-          vercel env rm VITE_API_URL --token=${{ secrets.VERCEL_TOKEN }} --yes 2>/dev/null || true
-
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:
