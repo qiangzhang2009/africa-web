@@ -160,6 +160,16 @@ export default function CalculatorPage() {
   const [freightManual, setFreightManual] = useState('')
   const [exchangeRate, setExchangeRate] = useState(DEFAULT_EXCHANGE_RATE.toString())
 
+  // Refs 同步最新值，避免快速点击时的竞态条件
+  const hsCodeRef = useRef('0901.11.00')
+  const originRef = useRef('ET')
+  const destinationRef = useRef<DestinationMarket>('CN')
+  const quantityKgRef = useRef('60')
+  const fobValueRef = useRef('')
+  const freightModeRef = useRef('lcl')
+  const freightManualRef = useRef('')
+  const exchangeRateRef = useRef(DEFAULT_EXCHANGE_RATE.toString())
+
   // ── HS autocomplete ──
   const [hsSearch, setHsSearch] = useState('')
   const [hsSuggestions, setHsSuggestions] = useState<HSSearchResult[]>([])
@@ -179,11 +189,21 @@ export default function CalculatorPage() {
   function applyPreset(label: string) {
     const p = PRESETS.find((x) => x.label === label)
     if (!p) return
+    // 同步更新 ref，确保 handleCalculate 立即读取到最新值
+    hsCodeRef.current = p.hs10
+    originRef.current = p.origin
+    destinationRef.current = 'CN'
+    quantityKgRef.current = p.defaultQty.toString()
+    fobValueRef.current = ''
+    freightModeRef.current = 'lcl'
+    freightManualRef.current = ''
     setPreset(label)
     setHsCode(p.hs10)
     setOrigin(p.origin)
     setOriginName(p.originName)
+    setDestination('CN')
     setQuantityKg(p.defaultQty.toString())
+    setFobValue('')
     setFreightMode('lcl')
     setFreightManual('')
     setHsSearch('')
@@ -193,6 +213,7 @@ export default function CalculatorPage() {
 
   // ── HS search ──
   function handleHsSearchChange(val: string) {
+    hsCodeRef.current = val
     setHsCode(val)
     setHsSearch(val)
     if (searchTimeout.current) clearTimeout(searchTimeout.current)
@@ -219,7 +240,9 @@ export default function CalculatorPage() {
   }
 
   function applyHsSuggestion(item: HSSearchResult) {
-    setHsCode(item.hs_10 || hsCode)
+    const hs = item.hs_10 || hsCodeRef.current
+    hsCodeRef.current = hs
+    setHsCode(hs)
     setHsSearch(item.hs_10 || '')
     setShowHsDropdown(false)
   }
@@ -237,7 +260,9 @@ export default function CalculatorPage() {
 
   // ── Calculate ──
   async function handleCalculate() {
-    if (!fobValue || parseFloat(fobValue) <= 0) {
+    // 使用 ref 获取最新值（同步），避免 React 状态延迟导致的竞态条件
+    const currentFobValue = fobValueRef.current
+    if (!currentFobValue || parseFloat(currentFobValue) <= 0) {
       setError('请输入有效的FOB货值')
       track.calcError('invalid_fob_value')
       return
@@ -253,27 +278,27 @@ export default function CalculatorPage() {
     setResult(null)
 
     try {
-      const freightVal = freightMode === 'manual' && freightManual
-        ? parseFloat(freightManual)
+      const freightVal = freightModeRef.current === 'manual' && freightManualRef.current
+        ? parseFloat(freightManualRef.current)
         : null
 
       const input = {
-        hs_code: hsCode,
-        origin,
-        destination,
-        fob_value: parseFloat(fobValue),
-        quantity_kg: parseFloat(quantityKg),
-        freight_mode: freightMode,
+        hs_code: hsCodeRef.current,
+        origin: originRef.current,
+        destination: destinationRef.current,
+        fob_value: parseFloat(currentFobValue),
+        quantity_kg: parseFloat(quantityKgRef.current),
+        freight_mode: freightModeRef.current,
       }
 
       const data = await calculateTariff({
-        hs_code: hsCode,
-        origin_country: origin,
-        destination,
-        fob_value: parseFloat(fobValue),
-        quantity_kg: parseFloat(quantityKg),
+        hs_code: hsCodeRef.current,
+        origin_country: originRef.current,
+        destination: destinationRef.current,
+        fob_value: parseFloat(currentFobValue),
+        quantity_kg: parseFloat(quantityKgRef.current),
         freight_override: freightVal,
-        exchange_rate: parseFloat(exchangeRate),
+        exchange_rate: parseFloat(exchangeRateRef.current),
       })
       setResult(data)
       track.calcSubmit(input, data.success)
@@ -389,7 +414,7 @@ export default function CalculatorPage() {
                 <input
                   type="text"
                   value={origin}
-                  onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+                  onChange={(e) => { const v = e.target.value.toUpperCase(); setOrigin(v); originRef.current = v }}
                   placeholder="ET"
                   maxLength={2}
                   className="w-16 px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -403,7 +428,7 @@ export default function CalculatorPage() {
               <p className="block text-sm font-medium text-slate-700 mb-1.5">目的地市场 <span className="text-red-500">*</span></p>
               <select
                 value={destination}
-                onChange={(e) => { setDestination(e.target.value as DestinationMarket); track.calcChangeDestination(e.target.value) }}
+                onChange={(e) => { const v = e.target.value as DestinationMarket; setDestination(v); destinationRef.current = v; track.calcChangeDestination(v) }}
                 className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="CN">🇨🇳 中国（零关税）</option>
@@ -420,7 +445,7 @@ export default function CalculatorPage() {
               <input
                 type="number"
                 value={quantityKg}
-                onChange={(e) => setQuantityKg(e.target.value)}
+                onChange={(e) => { const v = e.target.value; setQuantityKg(v); quantityKgRef.current = v }}
                 placeholder="60"
                 min="1"
                 className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -435,7 +460,7 @@ export default function CalculatorPage() {
               <input
                 type="number"
                 value={fobValue}
-                onChange={(e) => setFobValue(e.target.value)}
+                onChange={(e) => { const v = e.target.value; setFobValue(v); fobValueRef.current = v }}
                 placeholder="如 360（对应 60kg × $6/kg）"
                 min="0"
                 step="0.01"
@@ -449,8 +474,10 @@ export default function CalculatorPage() {
               <select
                 value={freightMode}
                 onChange={(e) => {
-                  setFreightMode(e.target.value)
-                  if (e.target.value !== 'manual') setFreightManual('')
+                  const v = e.target.value
+                  setFreightMode(v)
+                  freightModeRef.current = v
+                  if (v !== 'manual') { setFreightManual(''); freightManualRef.current = '' }
                 }}
                 className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
@@ -464,7 +491,7 @@ export default function CalculatorPage() {
                   <input
                     type="number"
                     value={freightManual}
-                    onChange={(e) => setFreightManual(e.target.value)}
+                    onChange={(e) => { const v = e.target.value; setFreightManual(v); freightManualRef.current = v }}
                     placeholder="总运费 USD"
                     min="0"
                     step="1"
@@ -488,7 +515,7 @@ export default function CalculatorPage() {
                 <input
                   type="number"
                   value={exchangeRate}
-                  onChange={(e) => setExchangeRate(e.target.value)}
+                  onChange={(e) => { const v = e.target.value; setExchangeRate(v); exchangeRateRef.current = v }}
                   placeholder="7.25"
                   min="0"
                   step="0.01"

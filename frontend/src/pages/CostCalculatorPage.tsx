@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { calculateImportCost } from '../utils/api'
 import { track } from '../utils/track'
@@ -67,19 +67,29 @@ export default function CostCalculatorPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string>('🥉 入门级（小额试水 <¥5万）')
 
+  // Refs 同步最新值，避免快速点击时的竞态条件
+  const productNameRef = useRef('')
+  const quantityKgRef = useRef('')
+  const fobPerKgRef = useRef('')
+  const originRef = useRef('ET')
+
   // Auto-fill from URL params (passed from product detail page)
   useEffect(() => {
     const p = searchParams.get('product')
     const q = searchParams.get('qty')
     const pr = searchParams.get('price')
     const o = searchParams.get('origin')
-    if (p) setProductName(decodeURIComponent(p))
-    if (q) setQuantityKg(q)
-    if (pr) setFobPerKg(pr)
-    if (o) setOrigin(o)
+    if (p) { productNameRef.current = decodeURIComponent(p); setProductName(decodeURIComponent(p)) }
+    if (q) { quantityKgRef.current = q; setQuantityKg(q) }
+    if (pr) { fobPerKgRef.current = pr; setFobPerKg(pr) }
+    if (o) { originRef.current = o; setOrigin(o) }
   }, [searchParams])
 
   function applyPreset(item: PresetItem) {
+    productNameRef.current = item.name
+    quantityKgRef.current = item.qty
+    fobPerKgRef.current = item.price
+    originRef.current = item.origin.code
     setProductName(item.name)
     setQuantityKg(item.qty)
     setFobPerKg(item.price)
@@ -88,7 +98,12 @@ export default function CostCalculatorPage() {
   }
 
   async function handleCalc() {
-    if (!productName || !quantityKg || !fobPerKg) {
+    // 使用 ref 获取最新值（同步），避免 React 状态延迟导致的竞态条件
+    const currentProductName = productNameRef.current
+    const currentQuantityKg = quantityKgRef.current
+    const currentFobPerKg = fobPerKgRef.current
+    const currentOrigin = originRef.current
+    if (!currentProductName || !currentQuantityKg || !currentFobPerKg) {
       setError('请填写所有必填项，或从下方选择一个品类')
       track.calcError('cost_calc_missing_fields')
       return
@@ -98,10 +113,10 @@ export default function CostCalculatorPage() {
     setResult(null)
     try {
       const input = {
-        product_name: productName,
-        quantity_kg: parseFloat(quantityKg),
-        fob_per_kg: parseFloat(fobPerKg),
-        origin,
+        product_name: currentProductName,
+        quantity_kg: parseFloat(currentQuantityKg),
+        fob_per_kg: parseFloat(currentFobPerKg),
+        origin: currentOrigin,
       }
       const data = await calculateImportCost(input)
       setResult(data)
@@ -216,7 +231,7 @@ export default function CostCalculatorPage() {
             <input
               type="text"
               value={productName}
-              onChange={(e) => setProductName(e.target.value)}
+              onChange={(e) => { setProductName(e.target.value); productNameRef.current = e.target.value }}
               placeholder="从上方选择或手动输入"
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
@@ -226,7 +241,7 @@ export default function CostCalculatorPage() {
             <input
               type="number"
               value={quantityKg}
-              onChange={(e) => setQuantityKg(e.target.value)}
+              onChange={(e) => { setQuantityKg(e.target.value); quantityKgRef.current = e.target.value }}
               placeholder="如 20"
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
@@ -236,7 +251,7 @@ export default function CostCalculatorPage() {
             <input
               type="number"
               value={fobPerKg}
-              onChange={(e) => setFobPerKg(e.target.value)}
+              onChange={(e) => { setFobPerKg(e.target.value); fobPerKgRef.current = e.target.value }}
               placeholder="如 6"
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
@@ -245,7 +260,7 @@ export default function CostCalculatorPage() {
             <p className="block text-sm font-medium text-slate-700 mb-1.5">原产国</p>
             <select
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              onChange={(e) => { setOrigin(e.target.value); originRef.current = e.target.value }}
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
             >
               <option value="ET">🇪🇹 埃塞俄比亚</option>
