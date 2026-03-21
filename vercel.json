@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://africa-web-wuxs.onrender.com/api/$1"
+      "destination": "https://africa-web-wuxs.onrender.com/api/v1/$1"
     },
     {
       "source": "/(.*)",

@@ -274,11 +274,20 @@ def init_db(db_path: str) -> None:
             AFRICA_COUNTRIES
         )
 
-    # Seed HS codes if empty
+    # Seed HS codes if empty OR re-seed to ensure all new entries are present
     cursor.execute("SELECT COUNT(*) FROM hs_codes")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
             """INSERT OR IGNORE INTO hs_codes
+               (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            HS_CODES_SEED
+        )
+    else:
+        # Force re-seed: delete and re-insert to capture any new entries added to seed data
+        cursor.execute("DELETE FROM hs_codes")
+        cursor.executemany(
+            """INSERT INTO hs_codes
                (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             HS_CODES_SEED
