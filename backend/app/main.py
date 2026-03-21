@@ -38,9 +38,15 @@ async def lifespan(app: FastAPI):
 
 
 # ─── CORS configuration (must be before any routes) ─────────────────────────
-# Allow all origins in production for simplicity (Vercel proxy handles security)
-_allow_origins = ["*"]
-_allow_credentials = False
+# 明确允许的跨域来源（不能用 * 因为 credentials=True 时浏览器拒绝 *）
+# OnRender 后端通过 Vercel rewrite 被 AfricaZero 前端调用
+_allow_origins = [
+    "https://africa.zxqconsulting.com",
+    "https://global2china.zxqconsulting.com",
+    "http://localhost:5173",  # dev
+    "http://localhost:8000",  # dev
+]
+_allow_credentials = True
 
 app = FastAPI(
     title="AfricaZero API",
@@ -57,6 +63,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ─── Global OPTIONS handler (bypasses lifespan/cold-start delays) ────────────
+# OnRender 免费版冷启动时 lifespan 中的 init_db() 会阻塞 OPTIONS 预检请求
+# 解决：添加同步 OPTIONS 处理器，优先于所有异步路由匹配
+@app.api_route("/{path:path}", methods=["OPTIONS"])
+async def options_handler(request: Request, path: str):
+    """Handle all OPTIONS preflight requests before reaching any route handler."""
+    origin = request.headers.get("origin", "*")
+    return Response(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+            "Access-Control-Max-Age": "600",
+        },
+    )
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
