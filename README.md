@@ -23,7 +23,22 @@
 | 后端 | FastAPI (Python 3.11+) |
 | 数据库 | SQLite（零运维） |
 | AI | DeepSeek API（可选） |
-| 部署 | Vercel（前端）+ Render（后端） |
+| 部署 | Vercel（前端+API代理）+ Render（后端） |
+
+## 架构
+
+```
+用户浏览器
+    ↓
+前端静态资源 (Vercel)
+    ↓ /api/* → Vercel Rewrite
+    ↓
+后端 API (Render FastAPI)
+    ↓
+SQLite 数据库
+```
+
+**简化说明**：前端部署在 Vercel，使用 Vercel 的 rewrite 功能将 `/api/*` 请求代理到 Render 后端，无需额外的 CORS Worker 或代理服务。
 
 ## 快速启动
 
@@ -51,17 +66,19 @@ uvicorn app.main:app --reload --port 8000
 
 ## 部署
 
-前端推送到 main 分支后，GitHub Actions 自动部署到 Vercel。
-后端推送到 main 分支后，GitHub Actions 自动部署到 Render。
+前端和后端都通过 GitHub Actions 自动部署：
+- 推送代码到 main 分支后，Vercel 自动部署前端
+- Render 自动检测并部署后端
+
+**注意**：Vercel 和 Render 的部署是独立的，不需要手动干预。
 
 ## 环境变量
 
 | 变量 | 说明 |
 |---|---|
-| `DEEPSEEK_API_KEY` | DeepSeek API Key（可选） |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key（可选，用于AI原产地判定） |
 | `DATABASE_URL` | SQLite 数据库路径 |
-| `CORS_ORIGINS` | 允许的跨域来源 |
-| `VITE_API_URL` | 后端 API 地址（前端构建时用） |
+| `EXCHANGE_RATE_API_KEY` | 汇率 API Key（可选） |
 
 ## API 端点
 
@@ -73,6 +90,7 @@ uvicorn app.main:app --reload --port 8000
 | POST | `/api/v1/origin/check` | 原产地AI判定 |
 | GET | `/api/v1/countries` | 国家列表 |
 | GET | `/api/v1/subscribe/check` | 订阅状态 |
+| GET | `/health` | 后端健康检查 |
 
 ---
 
