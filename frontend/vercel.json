@@ -2,8 +2,8 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://africa-web-wuxs.onrender.com/api/:path*"
+      "source": "/api/(.*)",
+      "destination": "https://africa-web-wuxs.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
@@ -12,20 +12,11 @@
   ],
   "headers": [
     {
-      "source": "/api/:path*",
+      "source": "/api/(.*)",
       "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "https://africa.zxqconsulting.com"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-        }
+        { "key": "Access-Control-Allow-Origin", "value": "https://africa.zxqconsulting.com" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin" }
       ]
     }
   ]

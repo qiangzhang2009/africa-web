@@ -129,6 +129,15 @@ export interface HSSearchResult {
   mfn_rate: number
   category: string | null
   match_score: number
+  zero_tariff?: boolean | null   // 新增：是否零关税
+  category_guidance?: string | null  // 新增：品类说明
+}
+
+export interface HSSearchResponse {
+  results: HSSearchResult[]
+  has_non_zero_tariff?: boolean
+  summary_guidance?: string | null
+  error?: string
 }
 
 // ─── Origin Check ─────────────────────────────────────────────────────────────

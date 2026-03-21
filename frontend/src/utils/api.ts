@@ -5,6 +5,7 @@ import type {
   ImportCostInput,
   ImportCostResult,
   HSSearchResult,
+  HSSearchResponse,
   OriginCheckInput,
   OriginCheckResult,
   Country,
@@ -40,11 +41,11 @@ export async function calculateImportCost(input: ImportCostInput): Promise<Impor
 // ─── HS Code Search ──────────────────────────────────────────────────────────
 export async function searchHSCodes(query: string, limit = 10): Promise<HSSearchResult[]> {
   try {
-    const { data } = await api.get<{ results?: HSSearchResult[]; data?: HSSearchResult[] } | null>('/hs-codes/search', {
+    const { data } = await api.get<HSSearchResponse | null>('/hs-codes/search', {
       params: { q: query, limit },
     })
     if (!data) return []
-    return data.results ?? data.data ?? []
+    return data.results ?? []
   } catch {
     return []
   }

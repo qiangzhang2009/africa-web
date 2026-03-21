@@ -65,11 +65,11 @@ const CATEGORIES = [
 
 // ─── Fuzzy tip mappings ──────────────────────────────────────────────────────
 const FUZZY_TIPS: Record<string, string> = {
-  '钢材': '钢材类(72章)大多不在零关税范围内。建议尝试：铜矿(2603)、钴矿砂(2605)、锰矿(2602)，或浏览下方品类找灵感。',
+  '钢材': '钢材类(72章)目前不在零关税政策范围内，进口需缴纳6-8%的MFN关税。建议关注铜矿(2603)、钴矿砂(2605)、锰矿(2602)等零关税矿产品。',
   '废钢': '废钢(7204)不在零关税范围内。可关注：铜矿、钴矿砂、锰矿等非洲优势矿产品。',
   '废旧钢材': '废钢(7204)不在零关税范围内。可关注：铜矿(2603)、钴矿砂(2605)、锰矿(2602)等非洲优势矿产品。',
   '汽车': '整车进口需3C认证，门槛极高。建议了解：矿产品、农产品等非洲特色货源。',
-  '手机': '手机及电子配件关税较高，且涉及3C认证。建议关注：原材料、农矿产品方向。',
+  '手机': '手机(8517)进口需3C认证，门槛较高，且大多数为一般贸易进口，非洲手机出口较少。建议关注：原材料、农矿产品方向。',
   '衣服': '服装(61-62章)大多不在零关税范围。可尝试：皮革制品、棉纤维原料。',
   '家具': '家具品类复杂，建议先确认HS编码，或浏览下方品类获取选品灵感。',
   '塑料': '初级形态的塑料(39章)有部分可享零关税。可浏览"坚果油籽"品类参考分析思路。',
@@ -82,6 +82,8 @@ const FUZZY_TIPS: Record<string, string> = {
   '铝': '铝材(76章)部分享受零关税。可浏览"矿产品"分类了解更多详情。',
   '木材': '热带硬木原木(44章)部分零关税！加蓬、喀麦隆有优质硬木资源。注意需要FSC认证。',
   '咖啡': '咖啡(0901)是零关税入门首选！埃塞俄比亚耶加雪菲、肯尼亚AA都是全球精品咖啡知名产区。',
+  '钢铁': '钢铁(72章)目前不在非洲零关税政策范围内，进口需缴纳6-8%MFN关税。',
+  '煤炭': '煤炭(27章)不在零关税范围内，进口关税约5-6%，不适合作为中非零关税贸易品类。',
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -92,6 +94,7 @@ export default function HSLookupPage() {
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [searchGuidance, setSearchGuidance] = useState<string | null>(null)
 
   async function handleSearch(searchQuery?: string) {
     const q = searchQuery ?? query
@@ -100,11 +103,18 @@ export default function HSLookupPage() {
     setError(null)
     setSearched(true)
     setActiveCategory(null)
+    setSearchGuidance(null)
     try {
       const data = await searchHSCodes(q.trim())
-      setResults(data)
+      setResults(data ?? [])
+      // 检查是否有非零关税品类，给出通用引导
+      const hasNonZero = data?.some(r => r.zero_tariff === false)
+      if (hasNonZero) {
+        setSearchGuidance('以上结果中，非零关税品类已用红色标注。零关税节省 = MFN税率（最惠国税率）。部分品类（汽车、电子)另有3C认证要求，请确认后再投入。')
+      }
     } catch {
       setError('查询失败，请重试')
+      setResults([])
     } finally {
       setLoading(false)
     }
@@ -129,7 +139,7 @@ export default function HSLookupPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="如：咖啡生豆，腰果、铜矿砂"
+            placeholder="如：咖啡生豆，腰果、铜矿砂、钢材、汽车、手机"
             className="flex-1 px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           <button
@@ -141,6 +151,21 @@ export default function HSLookupPage() {
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {/* 搜索建议提示 */}
+        {!searched && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="text-xs text-slate-400">试试：</span>
+            {['咖啡', '可可', '腰果', '钢材', '汽车', '铜矿', '芝麻'].map((word) => (
+              <button
+                key={word}
+                onClick={() => { setQuery(word); handleSearch(word) }}
+                className="text-xs text-slate-500 hover:text-primary-600 hover:bg-primary-50 px-2 py-0.5 rounded transition-colors"
+              >
+                {word}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Fuzzy tip for known "hard" queries */}
@@ -156,6 +181,13 @@ export default function HSLookupPage() {
               </Link>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 通用引导（当结果中有非零关税品类时显示） */}
+      {hasResults && searchGuidance && (
+        <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <p className="text-xs text-slate-600">{searchGuidance}</p>
         </div>
       )}
 
@@ -177,7 +209,7 @@ export default function HSLookupPage() {
           <p className="text-xs text-slate-500 mb-4">
             或者 <Link to="/products" className="text-primary-600 hover:underline">浏览全部可选品类</Link> — 按行业分类展示非洲优势出口产品清单
           </p>
-          {/* Business direction exploration for newbies */}
+          {/* 选品方向引导 */}
           <div className="mt-4 pt-4 border-t border-slate-200">
             <p className="text-xs font-semibold text-slate-600 mb-2">不知道做什么方向？试试这些思路：</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -218,29 +250,49 @@ export default function HSLookupPage() {
       {hasResults && (
         <div className="space-y-3">
           <p className="text-sm text-slate-500">{results.length} 个结果</p>
-          {results.map((item, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{item.hs_10 || '—'}
-                  </span>
-                  {item.category && (
-                    <span className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full">
-                      {item.category}
+          {results.map((item, i) => {
+            const isZero = item.zero_tariff === true
+            const isNonZero = item.zero_tariff === false
+            return (
+              <div key={i} className={`bg-white rounded-xl border p-4 flex items-start justify-between gap-4 ${
+                isNonZero ? 'border-red-200 bg-red-50' : 'border-slate-200'
+              }`}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-mono text-sm bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{item.hs_10 || '—'}
                     </span>
+                    {item.category && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        isNonZero ? 'bg-red-100 text-red-700' : 'bg-primary-50 text-primary-700'
+                      }`}>
+                        {item.category}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-900">{item.name_zh}</p>
+                  {/* 非零关税品类额外提示 */}
+                  {isNonZero && item.category_guidance && (
+                    <p className="text-xs text-red-600 mt-1 leading-relaxed">{item.category_guidance}</p>
                   )}
                 </div>
-                <p className="text-sm text-slate-900">{item.name_zh}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-xs text-slate-500 mb-1">MFN税率</div>
-                <div className="text-sm font-semibold text-slate-700">
-                  {(item.mfn_rate * 100).toFixed(1)}%
+                <div className="text-right shrink-0">
+                  <div className="text-xs text-slate-500 mb-1">MFN税率</div>
+                  <div className={`text-sm font-semibold ${
+                    isZero ? 'text-green-600' : isNonZero ? 'text-red-600' : 'text-slate-700'
+                  }`}>
+                    {(item.mfn_rate * 100).toFixed(1)}%
+                  </div>
+                  {isZero ? (
+                    <div className="text-xs text-green-600 mt-0.5 font-medium">✅ 零关税</div>
+                  ) : isNonZero ? (
+                    <div className="text-xs text-red-600 mt-0.5 font-medium">❌ 不适用</div>
+                  ) : (
+                    <div className="text-xs text-slate-500 mt-0.5">—</div>
+                  )}
                 </div>
-                <div className="text-xs text-green-600 mt-0.5">非洲零关税</div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
