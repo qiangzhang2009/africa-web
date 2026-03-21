@@ -9,9 +9,34 @@
 
 const BACKEND_ORIGIN = "https://africa-web-wuxs.onrender.com"
 
-function corsHeaders(origin) {
+// Default allowed origins (fallback when env.ALLOWED_ORIGINS is not set)
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://ec250edc.africa-zero-frontend.pages.dev",
+  "https://africa.zxqconsulting.com",
+]
+
+function parseAllowedOrigins(env) {
+  // Support comma-separated list from Cloudflare Workers environment variable
+  const envOrigins = env?.ALLOWED_ORIGINS || ""
+  if (envOrigins) {
+    return envOrigins.split(",").map((o) => o.trim()).filter(Boolean)
+  }
+  return DEFAULT_ALLOWED_ORIGINS
+}
+
+function corsHeaders(request) {
+  const origin = request.headers.get("Origin") || ""
+  const allowedOrigins = parseAllowedOrigins(request.env)
+  
+  // If origin is in allowed list, return it; otherwise use first allowed origin
+  const allowOrigin = allowedOrigins.includes(origin) 
+    ? origin 
+    : allowedOrigins[0] || "*"
+  
   return {
-    "Access-Control-Allow-Origin": origin || "https://africa-zero-frontend.pages.dev",
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
@@ -26,7 +51,7 @@ async function handleRequest(request, env, ctx) {
 
   // OPTIONS preflight — for both API and static file requests
   if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders(origin) })
+    return new Response(null, { status: 204, headers: corsHeaders(request) })
   }
 
   // Proxy /api/* to FastAPI backend on Render
@@ -64,12 +89,12 @@ async function handleRequest(request, env, ctx) {
       const responseBody = await backendResponse.text()
       return new Response(responseBody, {
         status: backendResponse.status,
-        headers: { ...responseHeaders, ...corsHeaders(origin) },
+        headers: { ...responseHeaders, ...corsHeaders(request) },
       })
     } catch (err) {
       return new Response(
         JSON.stringify({ detail: "Backend unavailable: " + err.message }),
-        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders(origin) } }
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders(request) } }
       )
     }
   }
