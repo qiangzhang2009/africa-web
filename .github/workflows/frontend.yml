@@ -26,7 +26,7 @@ jobs:
         working-directory: ./frontend
 
       - name: Build
-        run: npx tsc --noEmit --skipLibCheck 2>/dev/null || true && npm run build
+        run: node_modules/.bin/tsc --noEmit --skipLibCheck || true && npm run build
         working-directory: ./frontend
         env:
           VITE_API_URL: ${{ vars.VERCEL_API_URL }}

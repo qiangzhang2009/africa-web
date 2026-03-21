@@ -30,7 +30,7 @@ jobs:
         working-directory: frontend
 
       - name: Build
-        run: npx tsc --noEmit --skipLibCheck 2>/dev/null || true && npm run build
+        run: node_modules/.bin/tsc --noEmit --skipLibCheck || true && npm run build
         working-directory: frontend
 
       - name: Deploy to Cloudflare Pages
