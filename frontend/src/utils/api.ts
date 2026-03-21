@@ -11,10 +11,12 @@ import type {
 } from '../types'
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
-// Production: same-origin via Cloudflare Pages Function proxy
-//   The Pages Function (_worker.js) at /api/* proxies to FastAPI on Render.
-//   No CORS needed since it's same-origin.
-const BASE_URL = import.meta.env.DEV ? '/api' : ''
+// Production: Vercel rewrite proxy → FastAPI backend on Render.
+//   vercel.json rewrites /api/* to https://africa-web-wuxs.onrender.com/api/*
+//   Cloudflare Workers deployment uses VITE_WORKER_URL separately.
+const BASE_URL = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_URL || import.meta.env.VITE_WORKER_URL || '')
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
