@@ -98,8 +98,8 @@ async def search_hs_codes(q: str = Query(..., min_length=1), limit: int = Query(
     if len(results) < limit:
         try:
             cursor.execute(
-                "SELECT * FROM hs_codes WHERE name_zh LIKE ? LIMIT ?",
-                (f"%{q}%", limit - len(results))
+                "SELECT * FROM hs_codes WHERE name_zh LIKE ? OR category LIKE ? LIMIT ?",
+                (f"%{q}%", f"%{q}%", limit - len(results))
             )
             for row in cursor.fetchall():
                 if not any(r["hs_10"] == dict(row)["hs_10"] for r in results):
