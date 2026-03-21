@@ -12,18 +12,14 @@ import type {
 } from '../types'
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
-// Production: Vercel rewrite proxy → FastAPI backend on Render.
-//   vercel.json rewrites /api/* to https://africa-web-wuxs.onrender.com/api/*
-//   Cloudflare Workers deployment uses VITE_WORKER_URL separately.
-const BASE_URL = import.meta.env.DEV
-  ? '/api'
-  : (import.meta.env.VITE_API_URL || import.meta.env.VITE_WORKER_URL || '')
+// Production: Vercel rewrites /api/* → Render backend (via vercel.json)
+//   Rule: /api/v1/calculate/import-cost → https://africa-web-wuxs.onrender.com/api/v1/calculate/import-cost
+const BASE_URL = import.meta.env.DEV ? '/api' : ''
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: false,
 })
 
 // ─── Tariff ───────────────────────────────────────────────────────────────────
@@ -57,7 +53,7 @@ export async function checkOrigin(input: OriginCheckInput): Promise<OriginCheckR
   return data
 }
 
-// ─── Countries ────────────────────────────────────────────────────────────────
+// ─── Countries ───────────────────────────────────────────────────────────────
 export async function listCountries(market?: string): Promise<Country[]> {
   const { data } = await api.get<{ countries?: Country[]; data?: Country[] }>('/countries', {
     params: market ? { market } : {},

@@ -38,21 +38,9 @@ async def lifespan(app: FastAPI):
 
 
 # ─── CORS configuration (must be before any routes) ─────────────────────────
-_origins_raw = os.getenv("CORS_ORIGINS", "").strip()
-if _origins_raw in ("*", "all", "true"):
-    _allow_origins = ["*"]
-    _allow_credentials = False
-elif _origins_raw:
-    _allow_origins = [o.strip() for o in _origins_raw.split(",") if o.strip()]
-    _allow_credentials = True
-else:
-    # Default fallback — allow common development URLs
-    _allow_origins = [
-        "https://africa-web-1.onrender.com",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ]
-    _allow_credentials = True
+# Allow all origins in production for simplicity (Vercel proxy handles security)
+_allow_origins = ["*"]
+_allow_credentials = False
 
 app = FastAPI(
     title="AfricaZero API",

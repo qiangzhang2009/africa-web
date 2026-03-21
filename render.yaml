@@ -1,5 +1,5 @@
 # render.yaml — Render 自动部署配置
-# 完整解决方案，完全不需要手动配置
+# AfricaZero 后端 API 服务
 previewsEnabled: false
 
 services:
@@ -10,12 +10,10 @@ services:
     plan: free
     repo: https://github.com/qiangzhang2009/africa-web
     rootDir: africa-zero
-    # 关键：用 ; 分隔两条命令，禁用 Poetry 对 pip 的拦截
     buildCommand: pip install --no-cache -r backend/requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     pythonVersion: "3.11"
-    poetryVersion: "1"
     envVars:
       - key: PYTHONPATH
         value: /opt/render/project/src/africa-zero
@@ -23,28 +21,5 @@ services:
         sync: false
       - key: DATABASE_URL
         value: data/africa_zero.db
-      - key: CORS_ORIGINS
-        value: "https://africa-web-1.onrender.com"
       - key: POETRY_DISABLED
         value: "1"
-
-  - type: web
-    name: africa-zero-frontend
-    runtime: static
-    region: singapore
-    plan: free
-    repo: https://github.com/qiangzhang2009/africa-web
-    rootDir: africa-zero
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/dist
-    envVars:
-      - key: VITE_WORKER_URL
-        value: https://africa-web-cors-proxy.johnzhangfuture.workers.dev
-    headers:
-      - path: "/*"
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate
-    routes:
-      - type: rewrite
-        source: "/*"
-        destination: /index.html
