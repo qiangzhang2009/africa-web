@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '../hooks/useAppStore'
 import { calculateTariff, searchHSCodes } from '../utils/api'
 import type { TariffCalcResult, DestinationMarket, HSSearchResult } from '../types'
@@ -127,8 +127,25 @@ function fmt(n: number, currency = 'CNY') {
 
 export default function CalculatorPage() {
   const { tier, remainingToday, decrementFreeQuery, syncCounter } = useAppStore()
+  const [searchParams] = useSearchParams()
 
   useEffect(() => { syncCounter() }, [])
+
+  // Auto-fill from URL params (passed from product detail or other pages)
+  useEffect(() => {
+    const hs = searchParams.get('hs')
+    const o = searchParams.get('origin')
+    if (hs) {
+      setHsCode(hs)
+      setHsSearch(hs)
+    }
+    if (o) {
+      setOrigin(o)
+      // Update originName too if possible
+      const found = PRESETS.find(p => p.origin === o)
+      if (found) setOriginName(found.originName)
+    }
+  }, [searchParams])
 
   // ── Form state ──
   const [preset, setPreset] = useState<string>('')

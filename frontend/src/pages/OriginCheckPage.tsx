@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { checkOrigin } from '../utils/api'
 import type { OriginCheckResult } from '../types'
 
 export default function OriginCheckPage() {
+  const [searchParams] = useSearchParams()
+
   const [hsCode, setHsCode] = useState('')
   const [origin, setOrigin] = useState('')
   const [processing, setProcessing] = useState('')
@@ -10,6 +13,14 @@ export default function OriginCheckPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<OriginCheckResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Auto-fill from URL params (passed from product detail or cost calculator)
+  useEffect(() => {
+    const hs = searchParams.get('hs')
+    const o = searchParams.get('origin')
+    if (hs) setHsCode(decodeURIComponent(hs))
+    if (o) setOrigin(decodeURIComponent(o))
+  }, [searchParams])
 
   async function handleCheck() {
     if (!hsCode || !origin || !processing) {

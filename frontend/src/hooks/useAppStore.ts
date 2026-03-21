@@ -23,12 +23,33 @@ function makeFreshCounter(): DailyCounter {
   return { date: getTodayKey(), remaining: FREE_DAILY_LIMIT, totalUsed: 0 }
 }
 
+// ─── Interest list item ────────────────────────────────────────────────────────
+export interface InterestItem {
+  hsCode: string
+  name: string
+  originCountries: string[]
+  originCountryCodes: string[]
+  mfnRate: string
+  zeroTariff: boolean
+  difficulty: string
+  addedAt: number  // timestamp
+  // Pre-filled calc params
+  defaultQty?: number
+  defaultPrice?: number
+}
+
 interface AppState {
   tier: SubscriptionTier
   dailyFreeQueries: number
   maxFreeDaily: number
   remainingToday: number
   counter: DailyCounter
+
+  // Interest list
+  interestList: InterestItem[]
+  addToInterestList: (item: InterestItem) => void
+  removeFromInterestList: (hsCode: string) => void
+  isInInterestList: (hsCode: string) => boolean
 
   decrementFreeQuery: () => void
   setTier: (tier: SubscriptionTier) => void
@@ -44,6 +65,22 @@ export const useAppStore = create<AppState>()(
       maxFreeDaily: FREE_DAILY_LIMIT,
       remainingToday: FREE_DAILY_LIMIT,
       counter: makeFreshCounter(),
+
+      interestList: [],
+
+      addToInterestList: (item) => {
+        const { interestList } = get()
+        if (interestList.some(i => i.hsCode === item.hsCode)) return
+        set({ interestList: [...interestList, item] })
+      },
+
+      removeFromInterestList: (hsCode) => {
+        set({ interestList: get().interestList.filter(i => i.hsCode !== hsCode) })
+      },
+
+      isInInterestList: (hsCode) => {
+        return get().interestList.some(i => i.hsCode === hsCode)
+      },
 
       decrementFreeQuery: () => {
         const { remainingToday, dailyFreeQueries } = get()
@@ -77,6 +114,7 @@ export const useAppStore = create<AppState>()(
         tier: state.tier,
         counter: state.counter,
         dailyFreeQueries: state.dailyFreeQueries,
+        interestList: state.interestList,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

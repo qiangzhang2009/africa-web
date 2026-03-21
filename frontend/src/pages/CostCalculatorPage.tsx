@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { calculateImportCost } from '../utils/api'
 import type { ImportCostResult } from '../types'
 
@@ -55,6 +55,8 @@ type PresetItem = {
 }
 
 export default function CostCalculatorPage() {
+  const [searchParams] = useSearchParams()
+
   const [productName, setProductName] = useState('')
   const [quantityKg, setQuantityKg] = useState('')
   const [fobPerKg, setFobPerKg] = useState('')
@@ -63,6 +65,18 @@ export default function CostCalculatorPage() {
   const [result, setResult] = useState<ImportCostResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string>('🥉 入门级（小额试水 <¥5万）')
+
+  // Auto-fill from URL params (passed from product detail page)
+  useEffect(() => {
+    const p = searchParams.get('product')
+    const q = searchParams.get('qty')
+    const pr = searchParams.get('price')
+    const o = searchParams.get('origin')
+    if (p) setProductName(decodeURIComponent(p))
+    if (q) setQuantityKg(q)
+    if (pr) setFobPerKg(pr)
+    if (o) setOrigin(o)
+  }, [searchParams])
 
   function applyPreset(item: PresetItem) {
     setProductName(item.name)

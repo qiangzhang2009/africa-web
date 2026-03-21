@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import InterestListPanel from '../components/InterestListPanel'
 
 const navLinks = [
   { to: '/calculator', label: '关税计算器' },
@@ -88,6 +89,9 @@ export default function Layout() {
 
       {/* Main content */}
       <main><Outlet /></main>
+
+      {/* Floating interest list panel */}
+      <InterestListPanel />
 
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 mt-16">

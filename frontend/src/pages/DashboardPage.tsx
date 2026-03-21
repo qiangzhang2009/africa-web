@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useAppStore } from '../hooks/useAppStore'
+import { Bookmark } from 'lucide-react'
 
 export default function DashboardPage() {
-  const { tier, dailyFreeQueries, maxFreeDaily } = useAppStore()
+  const { tier, dailyFreeQueries, maxFreeDaily, interestList } = useAppStore()
   const isPro = tier !== 'free'
 
   return (
@@ -48,6 +49,65 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             Pro 版 · 无限次使用
+          </div>
+        )}
+      </div>
+
+      {/* Interest list */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Bookmark className="w-5 h-5 text-orange-500" />
+            <h2 className="text-lg font-semibold text-slate-900">我的意向清单</h2>
+          </div>
+          <Link
+            to="/products"
+            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            继续浏览 →
+          </Link>
+        </div>
+        {interestList.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-slate-500 mb-3">还没有意向品类</p>
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              浏览选品清单
+            </Link>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm text-slate-600 mb-3">
+              共 <strong>{interestList.length}</strong> 个品类
+            </p>
+            <div className="space-y-2">
+              {interestList.slice(0, 5).map((item) => (
+                <div key={item.hsCode} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-slate-800 truncate">{item.name}</span>
+                      <span className="font-mono text-xs text-slate-400">{item.hsCode}</span>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5">
+                      {item.originCountries[0]} · {item.difficulty}
+                    </div>
+                  </div>
+                  <Link
+                    to={`/cost-calculator?product=${encodeURIComponent(item.name)}&qty=${item.defaultQty || ''}&price=${item.defaultPrice || ''}&origin=${item.originCountryCodes[0] || ''}`}
+                    className="shrink-0 px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs font-medium rounded-lg transition-colors"
+                  >
+                    精算
+                  </Link>
+                </div>
+              ))}
+            </div>
+            {interestList.length > 5 && (
+              <p className="text-xs text-slate-400 mt-2 text-center">
+                还有 {interestList.length - 5} 个品类...
+              </p>
+            )}
           </div>
         )}
       </div>
