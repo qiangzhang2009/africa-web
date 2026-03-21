@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'frontend/**'
+      - 'vercel.json'
       - '.github/workflows/frontend.yml'
   workflow_dispatch:
 
@@ -26,7 +27,7 @@ jobs:
         working-directory: ./frontend
 
       - name: Build
-        run: node_modules/.bin/tsc --noEmit --skipLibCheck || true && npm run build
+        run: npm run build
         working-directory: ./frontend
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
@@ -38,4 +39,4 @@ jobs:
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: '--prod'
-          working-directory: ./frontend
+          working-directory: .
