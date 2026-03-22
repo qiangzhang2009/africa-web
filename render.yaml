@@ -1,6 +1,7 @@
 # render.yaml — Render 自动部署配置
 # AfricaZero 后端 API 服务
 previewsEnabled: false
+autoDeploy: true
 
 services:
   - type: web
@@ -9,6 +10,7 @@ services:
     region: singapore
     plan: free
     repo: https://github.com/qiangzhang2009/africa-web
+    branch: main
     rootDir: africa-zero
     buildCommand: pip install --no-cache -r backend/requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT

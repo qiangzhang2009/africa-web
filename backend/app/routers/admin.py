@@ -10,6 +10,8 @@ from app.models.database import get_db, get_db_path
 from app.schemas import UserResponse, SubscriptionResponse
 from app.routers.auth import get_current_user
 
+DB_PATH = get_db_path()
+
 router = APIRouter()
 
 
