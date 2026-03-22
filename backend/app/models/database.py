@@ -44,7 +44,7 @@ def get_db(path: str) -> sqlite3.Connection:
     return conn
 
 
--- ─── Schema ──────────────────────────────────────────────────────────────────
+# ─── Schema ──────────────────────────────────────────────────────────────────
 
 SCHEMA_SQL = """
 -- Africa 53 countries whitelist

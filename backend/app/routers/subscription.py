@@ -15,6 +15,8 @@ from app.routers.auth import get_current_user
 DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
 DB_PATH = str(Path(DB_PATH).resolve())
 
+router = APIRouter()
+
 TIER_PRICES = {
     "free": 0,
     "pro": 99,
