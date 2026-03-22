@@ -92,7 +92,7 @@ class CertGuide(BaseModel):
     days_min: int
     days_max: int
     doc_requirements: list[str]
-    step_sequence: list[dict]
+    step_sequence: list[str]
     api_available: bool
     notes: Optional[str]
 
