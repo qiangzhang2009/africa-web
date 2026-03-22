@@ -36,7 +36,7 @@ services:
     branch: main
     rootDir: ""
     buildCommand: cd frontend && npm install && npm run build
-    startCommand: npx serve frontend/dist -l $PORT
+    startCommand: npx serve frontend/dist -l $PORT -s
     healthCheckPath: /
     envVars:
       - key: VITE_API_BASE
