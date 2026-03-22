@@ -186,28 +186,34 @@ async def list_cert_guides(
     rows = cursor.fetchall()
     conn.close()
 
-    result = [
-        {
-            "id": r["id"],
-            "country_code": r["country_code"],
-            "country_name_zh": r["country_name_zh"],
-            "cert_type": r["cert_type"],
-            "cert_type_zh": r["cert_type_zh"],
-            "issuing_authority": r["issuing_authority"],
-            "issuing_authority_zh": r["issuing_authority_zh"],
-            "website_url": r["website_url"],
-            "fee_usd_min": r["fee_usd_min"],
-            "fee_usd_max": r["fee_usd_max"],
-            "fee_cny_note": r["fee_cny_note"],
-            "days_min": r["days_min"],
-            "days_max": r["days_max"],
-            "doc_requirements": _parse_json_field(r["doc_requirements"]) or _get_fallback_for(r["country_code"])["doc_requirements"],
-            "step_sequence": _parse_json_field(r["step_sequence"]) or _get_fallback_for(r["country_code"])["step_sequence"],
-            "api_available": bool(r["api_available"]),
-            "notes": r["notes"],
-        }
-        for r in rows
-    ]
+    out = []
+    for r in rows:
+        try:
+            fb = _get_fallback_for(r["country_code"])
+            docs = _parse_json_field(r["doc_requirements"]) or fb["doc_requirements"]
+            steps = _parse_json_field(r["step_sequence"]) or fb["step_sequence"]
+            out.append({
+                "id": r["id"],
+                "country_code": r["country_code"],
+                "country_name_zh": r["country_name_zh"],
+                "cert_type": r["cert_type"],
+                "cert_type_zh": r["cert_type_zh"],
+                "issuing_authority": r["issuing_authority"],
+                "issuing_authority_zh": r["issuing_authority_zh"],
+                "website_url": r["website_url"],
+                "fee_usd_min": r["fee_usd_min"],
+                "fee_usd_max": r["fee_usd_max"],
+                "fee_cny_note": r["fee_cny_note"],
+                "days_min": r["days_min"],
+                "days_max": r["days_max"],
+                "doc_requirements": docs,
+                "step_sequence": steps,
+                "api_available": bool(r["api_available"]),
+                "notes": r["notes"],
+            })
+        except Exception:
+            pass
+    return out
 
 
 @router.get("/certificate/guides/{country_code}")
