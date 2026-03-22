@@ -1007,11 +1007,22 @@ def init_db(db_path: str) -> None:
             CERT_GUIDES_SEED
         )
 
-    # ── Seed suppliers if empty ───────────────────────────────────────────────
+    # ── Seed suppliers (force update to fix data quality issues) ──────────────
     cursor.execute("SELECT COUNT(*) FROM suppliers")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
             """INSERT OR IGNORE INTO suppliers
+               (name_zh, name_en, country, region, main_products, main_hs_codes,
+                contact_email, min_order_kg, payment_terms, export_years,
+                verified_chamber, status, intro)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            SUPPLIERS_SEED
+        )
+    else:
+        # Force re-seed: fix data issues (e.g. HS codes stored as floats)
+        cursor.execute("DELETE FROM suppliers")
+        cursor.executemany(
+            """INSERT INTO suppliers
                (name_zh, name_en, country, region, main_products, main_hs_codes,
                 contact_email, min_order_kg, payment_terms, export_years,
                 verified_chamber, status, intro)
