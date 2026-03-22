@@ -565,7 +565,8 @@ CERT_GUIDES_SEED = [
         "肯尼亚国家工商会", "https://www.kenyachamber.org", 40, 100, 3, 5,
         "申请表、发票、装箱单、出口商声明、货物描述",
         "1.准备商业发票|2.联系KNCCI当地分会|3.提交申请|4.审核通过后缴费|5.取证",
-        0, "肯尼亚贸工部授权机构，需在当地有办公点"
+        0,
+        "肯尼亚贸工部授权机构，需在当地有办公点"
     ),
     (
         "TZ", "坦桑尼亚", "CO",
@@ -984,7 +985,7 @@ def init_db(db_path: str) -> None:
             HS_CODES_SEED
         )
 
-    # ── Seed freight routes if empty ──────────────────────────────────────────
+    # ── Seed freight routes (force update to fix data quality issues) ─────────────
     cursor.execute("SELECT COUNT(*) FROM freight_routes")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
@@ -994,12 +995,31 @@ def init_db(db_path: str) -> None:
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             FREIGHT_ROUTES_SEED
         )
+    else:
+        cursor.execute("DELETE FROM freight_routes")
+        cursor.executemany(
+            """INSERT INTO freight_routes
+               (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh,
+                transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            FREIGHT_ROUTES_SEED
+        )
 
-    # ── Seed certificate guides if empty ──────────────────────────────────────
+    # ── Seed certificate guides (force update to fix data quality issues) ───────
     cursor.execute("SELECT COUNT(*) FROM cert_guides")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
             """INSERT OR IGNORE INTO cert_guides
+               (country_code, country_name_zh, cert_type, issuing_authority,
+                issuing_authority_zh, website_url, fee_usd_min, fee_usd_max,
+                days_min, days_max, doc_requirements, step_sequence, api_available, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            CERT_GUIDES_SEED
+        )
+    else:
+        cursor.execute("DELETE FROM cert_guides")
+        cursor.executemany(
+            """INSERT INTO cert_guides
                (country_code, country_name_zh, cert_type, issuing_authority,
                 issuing_authority_zh, website_url, fee_usd_min, fee_usd_max,
                 days_min, days_max, doc_requirements, step_sequence, api_available, notes)
