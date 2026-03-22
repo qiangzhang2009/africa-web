@@ -1,11 +1,12 @@
 # render.yaml — Render 自动部署配置
-# AfricaZero 后端 API 服务
+# AfricaZero 前端 + 后端服务
 previewsEnabled: false
 autoDeploy: true
 
 services:
+  # ── Backend API ────────────────────────────────────────────────────────────────
   - type: web
-    name: africa-zero-api
+    name: africa-web
     runtime: python
     region: singapore
     plan: free
@@ -25,3 +26,22 @@ services:
         value: data/africa_zero.db
       - key: POETRY_DISABLED
         value: "1"
+
+  # ── Frontend ───────────────────────────────────────────────────────────────────
+  - type: web
+    name: africa-web-1
+    region: singapore
+    plan: free
+    repo: https://github.com/qiangzhang2009/africa-web
+    branch: main
+    rootDir: ""
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: ""
+    staticPublishPath: frontend/dist
+    headers:
+      - path: "/*"
+        name: "X-Frame-Options"
+        value: "DENY"
+    envVars:
+      - key: VITE_API_BASE
+        value: https://africa-web-wuxs.onrender.com

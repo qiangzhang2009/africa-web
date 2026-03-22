@@ -37,7 +37,7 @@ import type {
 } from '../types'
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
-const BASE_URL = import.meta.env.DEV ? '/api' : ''
+const BASE_URL = import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? '/api' : '')
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
