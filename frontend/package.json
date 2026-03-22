@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && cp vercel.json dist/",
+    "build": "tsc && vite build && cp vercel.json dist/ && cp public/_redirects dist/ && cp public/favicon.svg dist/",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -27,7 +27,7 @@ services:
       - key: POETRY_DISABLED
         value: "1"
 
-  # ── Frontend ───────────────────────────────────────────────────────────────────
+  # ── Frontend (SPA via Node.js server) ──────────────────────────────────────────
   - type: web
     name: africa-web-1
     region: singapore
@@ -36,12 +36,10 @@ services:
     branch: main
     rootDir: ""
     buildCommand: cd frontend && npm install && npm run build
-    startCommand: ""
-    staticPublishPath: frontend/dist
-    headers:
-      - path: "/*"
-        name: "X-Frame-Options"
-        value: "DENY"
+    startCommand: npx serve frontend/dist -l $PORT
+    healthCheckPath: /
     envVars:
       - key: VITE_API_BASE
         value: https://africa-web-wuxs.onrender.com
+      - key: NODE_VERSION
+        value: "20"
