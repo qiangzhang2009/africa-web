@@ -3,6 +3,52 @@ Shared Pydantic schemas for all API endpoints.
 """
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime
+
+
+# ─── Auth ─────────────────────────────────────────────────────────────────────
+
+class UserRegister(BaseModel):
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
+    wechat_id: Optional[str] = Field(default=None, max_length=50)
+
+
+class UserLogin(BaseModel):
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=1, max_length=100)
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    tier: str = "free"
+    is_admin: bool = False
+    subscribed_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+# ─── Sub-accounts ─────────────────────────────────────────────────────────────
+
+class SubAccountCreate(BaseModel):
+    email: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=6, max_length=100)
+    name: Optional[str] = Field(default=None, max_length=50)
+
+
+class SubAccountResponse(BaseModel):
+    id: int
+    email: str
+    name: Optional[str] = None
+    is_active: bool = True
+    created_at: Optional[str] = None
 
 
 # ─── Tariff ───────────────────────────────────────────────────────────────────
@@ -128,3 +174,57 @@ class SubscriptionStatus(BaseModel):
     tier: str
     expires_at: Optional[str]
     remaining_queries: Optional[int]
+    is_active: bool = True
+    days_remaining: Optional[int] = None
+    api_enabled: bool = False
+    sub_accounts_remaining: int = 0
+    user: Optional[UserResponse] = None
+
+
+class SubscriptionCreate(BaseModel):
+    tier: str = Field(..., description="订阅方案: free/pro/enterprise")
+    payment_method: str = Field(default="wechat", description="支付方式: wechat/alipay/transfer")
+    payment_channel: str = Field(default="mock", description="支付渠道")
+
+
+class SubscriptionResponse(BaseModel):
+    id: int
+    tier: str
+    amount: float
+    currency: str = "CNY"
+    payment_method: Optional[str] = None
+    payment_channel: str = "mock"
+    status: str = "active"
+    started_at: Optional[str] = None
+    expires_at: Optional[str] = None
+    auto_renew: bool = False
+
+
+# ─── API Keys ─────────────────────────────────────────────────────────────────
+
+class ApiKeyCreate(BaseModel):
+    name: str = Field(default="", max_length=100, description="密钥名称")
+    rate_limit_day: int = Field(default=100, ge=1, le=10000, description="每日调用限额")
+
+
+class ApiKeyResponse(BaseModel):
+    id: int
+    key_prefix: str
+    name: Optional[str] = None
+    tier: str = "enterprise"
+    rate_limit_day: int = 100
+    is_active: bool = True
+    last_used_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class ApiKeyWithPlain(BaseModel):
+    id: int
+    plain_key: str
+    key_prefix: str
+    name: Optional[str] = None
+    tier: str = "enterprise"
+    rate_limit_day: int = 100
+    is_active: bool = True
+    last_used_at: Optional[str] = None
+    created_at: Optional[str] = None

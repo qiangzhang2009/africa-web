@@ -11,13 +11,22 @@ import PricingPage from './pages/PricingPage'
 import DashboardPage from './pages/DashboardPage'
 import ProductDiscoveryPage from './pages/ProductDiscoveryPage'
 import GettingStartedPage from './pages/GettingStartedPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import AccountPage from './pages/AccountPage'
+import AdminPage from './pages/AdminPage'
 import { track } from './utils/track'
+import { useTrackInit } from './hooks/useTrackInit'
 
 function TrackPageView() {
   const location = useLocation()
+  // 初始化追踪 SDK
+  useTrackInit()
+
   useEffect(() => {
     track.page({ path: location.pathname, search: location.search })
   }, [location])
+
   return null
 }
 
@@ -37,6 +46,10 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="products" element={<ProductDiscoveryPage />} />
           <Route path="getting-started" element={<GettingStartedPage />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
+          <Route path="account" element={<AccountPage />} />
+          <Route path="admin" element={<AdminPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

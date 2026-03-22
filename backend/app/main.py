@@ -13,6 +13,10 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.routers import calculator, hs_codes, countries, subscribe
+from app.routers.auth import router as auth_router
+from app.routers.subscription import router as subscription_router
+from app.routers.api_keys import router as api_keys_router
+from app.routers.admin import router as admin_router
 
 load_dotenv()
 
@@ -43,6 +47,7 @@ async def lifespan(app: FastAPI):
 _allow_origins = [
     "https://africa.zxqconsulting.com",
     "https://global2china.zxqconsulting.com",
+    "https://frontend-nrlqfber2-johnzhangs-projects-50e83ec4.vercel.app",
     "http://localhost:5173",  # dev
     "http://localhost:8000",  # dev
 ]
@@ -88,7 +93,11 @@ async def options_handler(request: Request, path: str):
 app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
 app.include_router(hs_codes.router, prefix="/api/v1", tags=["HS编码查询"])
 app.include_router(countries.router, prefix="/api/v1", tags=["国家信息"])
-app.include_router(subscribe.router, prefix="/api/v1", tags=["订阅管理"])
+app.include_router(subscribe.router, prefix="/api/v1", tags=["订阅查询"])
+app.include_router(auth_router, prefix="/api/v1", tags=["用户认证"])
+app.include_router(subscription_router, prefix="/api/v1", tags=["订阅管理"])
+app.include_router(api_keys_router, prefix="/api/v1", tags=["API密钥管理"])
+app.include_router(admin_router, prefix="/api/v1", tags=["管理后台"])
 
 
 @app.get("/health")

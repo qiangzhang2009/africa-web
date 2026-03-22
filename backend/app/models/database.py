@@ -1,11 +1,41 @@
 """
 Database models using SQLite + Peewee ORM.
-Schema: africa_countries, hs_codes, policy_rules, users, calculations
+Schema: africa_countries, hs_codes, policy_rules, users, calculations,
+        subscriptions, api_keys, sub_accounts, usage_logs
 """
 import sqlite3
 import json
+import hashlib
+import secrets
 from pathlib import Path
 from datetime import datetime
+try:
+    from passlib.context import CryptContext
+    _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    def hash_password(password: str) -> str:
+        return _pwd_ctx.hash(password)
+    def verify_password(plain: str, hashed: str) -> bool:
+        return _pwd_ctx.verify(plain, hashed)
+except ImportError:
+    import bcrypt as _bc
+    def hash_password(password: str) -> str:
+        return _bc.hashpw(password.encode(), _bc.gensalt()).decode()
+    def verify_password(plain: str, hashed: str) -> bool:
+        return _bc.checkpw(plain.encode(), hashed.encode())
+
+
+def generate_api_key() -> tuple[str, str]:
+    """Generate a random API key. Returns (plain_key, hash_for_db)."""
+    plain = f"az_{secrets.token_urlsafe(32)}"
+    h = hashlib.sha256(plain.encode()).hexdigest()
+    return plain, h
+
+
+def mask_api_key(plain: str) -> str:
+    """Return a masked display version of an API key."""
+    if len(plain) < 12:
+        return plain[:4] + "***"
+    return plain[:10] + "***" + plain[-4:]
 
 
 def get_db(path: str) -> sqlite3.Connection:
@@ -14,7 +44,7 @@ def get_db(path: str) -> sqlite3.Connection:
     return conn
 
 
-# ─── Schema ──────────────────────────────────────────────────────────────────
+-- ─── Schema ──────────────────────────────────────────────────────────────────
 
 SCHEMA_SQL = """
 -- Africa 53 countries whitelist
@@ -56,12 +86,15 @@ CREATE TABLE IF NOT EXISTS policy_rules (
     updated_at      TEXT DEFAULT (datetime('now'))
 );
 
--- Users
+-- Users (extended with auth fields)
 CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    email           TEXT UNIQUE,
+    email           TEXT UNIQUE NOT NULL,
+    password_hash   TEXT NOT NULL,
     wechat_id       TEXT,
     tier            TEXT DEFAULT 'free',
+    is_admin        INTEGER DEFAULT 0,
+    is_active       INTEGER DEFAULT 1,
     subscribed_at   TEXT,
     expires_at      TEXT,
     created_at      TEXT DEFAULT (datetime('now'))
@@ -81,11 +114,70 @@ CREATE TABLE IF NOT EXISTS calculations (
     created_at      TEXT DEFAULT (datetime('now'))
 );
 
+-- Subscriptions
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    tier            TEXT NOT NULL,
+    amount          REAL DEFAULT 0,
+    currency        TEXT DEFAULT 'CNY',
+    payment_method  TEXT,
+    payment_channel TEXT DEFAULT 'mock',
+    status          TEXT DEFAULT 'active',
+    started_at      TEXT,
+    expires_at      TEXT,
+    auto_renew      INTEGER DEFAULT 0,
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+
+-- API Keys
+CREATE TABLE IF NOT EXISTS api_keys (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL,
+    key_hash        TEXT NOT NULL,
+    key_prefix      TEXT NOT NULL,
+    name            TEXT,
+    tier            TEXT DEFAULT 'enterprise',
+    rate_limit_day  INTEGER DEFAULT 100,
+    is_active       INTEGER DEFAULT 1,
+    last_used_at    TEXT,
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+
+-- Sub-accounts
+CREATE TABLE IF NOT EXISTS sub_accounts (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_user_id      INTEGER NOT NULL,
+    email               TEXT NOT NULL,
+    password_hash       TEXT NOT NULL,
+    name                TEXT,
+    is_active           INTEGER DEFAULT 1,
+    created_at          TEXT DEFAULT (datetime('now'))
+);
+
+-- API usage logs
+CREATE TABLE IF NOT EXISTS usage_logs (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER,
+    api_key_id          INTEGER,
+    endpoint            TEXT,
+    ip_address          TEXT,
+    user_agent          TEXT,
+    response_time_ms    INTEGER,
+    status_code         INTEGER,
+    created_at          TEXT DEFAULT (datetime('now'))
+);
+
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_hs_codes_hs4  ON hs_codes(hs_4);
-CREATE INDEX IF NOT EXISTS idx_hs_codes_name ON hs_codes(name_zh);
-CREATE INDEX IF NOT EXISTS idx_policy_market  ON policy_rules(market);
-CREATE INDEX IF NOT EXISTS idx_calc_user      ON calculations(user_id);
+CREATE INDEX IF NOT EXISTS idx_hs_codes_hs4     ON hs_codes(hs_4);
+CREATE INDEX IF NOT EXISTS idx_hs_codes_name    ON hs_codes(name_zh);
+CREATE INDEX IF NOT EXISTS idx_policy_market    ON policy_rules(market);
+CREATE INDEX IF NOT EXISTS idx_calc_user        ON calculations(user_id);
+CREATE INDEX IF NOT EXISTS idx_subs_user       ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_user   ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_sub_accounts_parent ON sub_accounts(parent_user_id);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_key  ON usage_logs(api_key_id);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_day  ON usage_logs(created_at);
 """
 
 
@@ -258,13 +350,27 @@ HS_CODES_SEED = [
 # ─── Init ─────────────────────────────────────────────────────────────────────
 
 def init_db(db_path: str) -> None:
-    """Create tables and seed data if empty."""
+    """Create tables and seed data if empty. Handles existing DB upgrades."""
     conn = get_db(db_path)
     cursor = conn.cursor()
 
     # Create schema
     cursor.executescript(SCHEMA_SQL)
     conn.commit()
+
+    # ── Migration: add missing columns to existing users table ─────────────────
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
+    except Exception:
+        pass
 
     # Seed countries if empty
     cursor.execute("SELECT COUNT(*) FROM africa_countries")

@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { track } from '../utils/track'
 import InterestListPanel from '../components/InterestListPanel'
+import { useAppStore } from '../hooks/useAppStore'
 
 const navLinks = [
   { to: '/calculator', label: '关税计算器' },
@@ -13,6 +14,7 @@ const navLinks = [
 
 export default function Layout() {
   const location = useLocation()
+  const { isLoggedIn, currentUser, tier: currentTier } = useAppStore()
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -52,19 +54,51 @@ export default function Layout() {
 
             {/* CTA */}
             <div className="flex items-center gap-2">
-              <Link
-                to="/dashboard"
-                onClick={() => track.pricingCtaClick('free', '我的面板')}
-                className="text-sm text-slate-600 hover:text-slate-900"
-              >
-                我的面板
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    to="/account"
+                    className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1.5"
+                  >
+                    <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <span className="hidden sm:inline">{currentUser?.email?.split('@')[0]}</span>
+                    <span className={`hidden sm:inline text-xs px-1.5 py-0.5 rounded-full font-medium ${currentUser?.tier === 'enterprise' ? 'bg-purple-100 text-purple-700' : currentUser?.tier === 'pro' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {currentUser?.tier === 'enterprise' ? '企业' : currentUser?.tier === 'pro' ? 'Pro' : '免费'}
+                    </span>
+                  </Link>
+                  {currentUser?.is_admin && (
+                    <Link
+                      to="/admin"
+                      className="text-sm text-red-600 hover:text-red-700 font-medium"
+                    >
+                      管理后台
+                    </Link>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-sm text-slate-600 hover:text-slate-900"
+                  >
+                    登录
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="text-sm text-slate-600 hover:text-slate-900"
+                  >
+                    注册
+                  </Link>
+                </>
+              )}
               <Link
                 to="/pricing"
                 onClick={() => track.pricingCtaClick('pro', 'nav_cta')}
                 className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                开通 Pro
+                {isLoggedIn && currentTier !== 'free' ? '续费/升级' : '开通 Pro'}
               </Link>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { SubscriptionTier } from '../types'
+import type { SubscriptionTier, UserResponse } from '../types'
+import { clearToken, setToken as _setToken } from '../utils/api'
 
 const FREE_DAILY_LIMIT = 3
 
@@ -39,6 +40,10 @@ export interface InterestItem {
 }
 
 interface AppState {
+  // Auth
+  currentUser: UserResponse | null
+  isLoggedIn: boolean
+
   tier: SubscriptionTier
   dailyFreeQueries: number
   maxFreeDaily: number
@@ -55,11 +60,18 @@ interface AppState {
   setTier: (tier: SubscriptionTier) => void
   setSubscription: (tier: SubscriptionTier, expiresAt?: string) => void
   syncCounter: () => void
+  updateUser: (user: UserResponse) => void
+  setAuth: (token: string, user: UserResponse) => void
+  logout: () => void
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
+      // Auth
+      currentUser: null,
+      isLoggedIn: false,
+
       tier: 'free',
       dailyFreeQueries: 0,
       maxFreeDaily: FREE_DAILY_LIMIT,
@@ -99,6 +111,26 @@ export const useAppStore = create<AppState>()(
 
       setSubscription: (tier) => set({ tier }),
 
+      updateUser: (user) => set({
+        currentUser: user,
+        isLoggedIn: true,
+        tier: user.tier,
+      }),
+
+      setAuth: (token, user) => {
+        _setToken(token)
+        set({
+          currentUser: user,
+          isLoggedIn: true,
+          tier: user.tier,
+        })
+      },
+
+      logout: () => {
+        clearToken()
+        set({ currentUser: null, isLoggedIn: false, tier: 'free' })
+      },
+
       // Call on mount — resets counter if a new day has passed
       syncCounter: () => {
         const { counter } = get()
@@ -115,6 +147,8 @@ export const useAppStore = create<AppState>()(
         counter: state.counter,
         dailyFreeQueries: state.dailyFreeQueries,
         interestList: state.interestList,
+        currentUser: state.currentUser,
+        isLoggedIn: state.isLoggedIn,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

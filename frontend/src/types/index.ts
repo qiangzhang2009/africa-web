@@ -156,3 +156,157 @@ export interface OriginCheckResult {
   reasons: string[]
   suggestions: string[]
 }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export interface UserResponse {
+  id: number
+  email: string
+  tier: SubscriptionTier
+  is_admin: boolean
+  subscribed_at: string | null
+  expires_at: string | null
+  created_at: string | null
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type?: string
+  user: UserResponse
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  email: string
+  password: string
+  wechat_id?: string
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+export interface SubscriptionStatus {
+  tier: SubscriptionTier
+  expires_at: string | null
+  remaining_queries: number | null
+  is_active: boolean
+  days_remaining: number | null
+  api_enabled: boolean
+  sub_accounts_remaining: number
+  user?: UserResponse
+}
+
+export interface SubscriptionHistoryItem {
+  id: number
+  tier: SubscriptionTier
+  amount: number
+  currency: string
+  payment_method: string | null
+  payment_channel: string
+  status: string
+  started_at: string | null
+  expires_at: string | null
+  auto_renew: boolean
+}
+
+export interface CreateSubscriptionRequest {
+  tier: SubscriptionTier
+  payment_method: string
+  payment_channel?: string
+}
+
+// ─── Sub-accounts ─────────────────────────────────────────────────────────────
+
+export interface SubAccountResponse {
+  id: number
+  email: string
+  name: string | null
+  is_active: boolean
+  created_at: string | null
+}
+
+export interface CreateSubAccountRequest {
+  email: string
+  password: string
+  name?: string
+}
+
+// ─── API Keys ─────────────────────────────────────────────────────────────────
+
+export interface ApiKeyResponse {
+  id: number
+  key_prefix: string
+  name: string | null
+  tier: string
+  rate_limit_day: number
+  is_active: boolean
+  last_used_at: string | null
+  created_at: string | null
+}
+
+export interface ApiKeyWithPlain {
+  id: number
+  plain_key: string
+  key_prefix: string
+  name: string | null
+  tier: string
+  rate_limit_day: number
+  is_active: boolean
+  last_used_at: string | null
+  created_at: string | null
+}
+
+export interface CreateApiKeyRequest {
+  name?: string
+  rate_limit_day?: number
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+export interface AdminUserSummary {
+  id: number
+  email: string
+  tier: SubscriptionTier
+  is_admin: boolean
+  is_active: boolean
+  subscribed_at: string | null
+  expires_at: string | null
+  created_at: string | null
+  latest_subscription: {
+    id: number
+    tier: SubscriptionTier
+    amount: number
+    status: string
+    started_at: string | null
+    expires_at: string | null
+  } | null
+  sub_accounts_count: number
+  api_keys_count: number
+}
+
+export interface AdminStats {
+  total_users: number
+  paying_users: number
+  pro_users: number
+  enterprise_users: number
+  api_keys_active: number
+  sub_accounts_active: number
+  active_subscriptions: number
+  total_revenue: number
+  new_users_this_week: number
+  expiring_soon_7d: number
+}
+
+// ─── Payment ──────────────────────────────────────────────────────────────────
+
+export interface PaymentOrder {
+  order_id: string
+  tier: SubscriptionTier
+  amount: number
+  payment_method: string
+  qr_code_url?: string
+  status: 'pending' | 'paid' | 'expired'
+}
