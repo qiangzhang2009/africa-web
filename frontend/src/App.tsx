@@ -15,6 +15,9 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AccountPage from './pages/AccountPage'
 import AdminPage from './pages/AdminPage'
+import FreightPage from './pages/FreightPage'
+import CertificatePage from './pages/CertificatePage'
+import SuppliersPage from './pages/SuppliersPage'
 import { track } from './utils/track'
 import { useTrackInit } from './hooks/useTrackInit'
 
@@ -35,7 +38,7 @@ export default function App() {
     <BrowserRouter>
       <TrackPageView />
       <Routes>
-        <Route path="/" element={<Layout />}>
+          <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="calculator" element={<CalculatorPage />} />
           <Route path="cost-calculator" element={<CostCalculatorPage />} />
@@ -50,6 +53,9 @@ export default function App() {
           <Route path="register" element={<RegisterPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="admin" element={<AdminPage />} />
+          <Route path="freight" element={<FreightPage />} />
+          <Route path="certificate" element={<CertificatePage />} />
+          <Route path="suppliers" element={<SuppliersPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

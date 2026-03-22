@@ -183,6 +183,109 @@ CREATE TABLE IF NOT EXISTS usage_logs (
     created_at          TEXT DEFAULT (datetime('now'))
 );
 
+-- Freight shipping routes
+CREATE TABLE IF NOT EXISTS freight_routes (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin_country      TEXT NOT NULL,
+    origin_port         TEXT,
+    origin_port_zh      TEXT,
+    dest_country        TEXT DEFAULT 'CN',
+    dest_port           TEXT NOT NULL,
+    dest_port_zh       TEXT NOT NULL,
+    transport_type      TEXT DEFAULT 'sea20gp',
+    cost_min_usd       REAL NOT NULL,
+    cost_max_usd       REAL NOT NULL,
+    transit_days_min    INTEGER,
+    transit_days_max   INTEGER,
+    notes               TEXT,
+    is_active           INTEGER DEFAULT 1,
+    updated_at          TEXT DEFAULT (datetime('now'))
+);
+
+-- Certificate of Origin guide by country
+CREATE TABLE IF NOT EXISTS cert_guides (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    country_code        TEXT NOT NULL,
+    country_name_zh    TEXT NOT NULL,
+    cert_type           TEXT DEFAULT 'CO',
+    cert_type_zh       TEXT DEFAULT '原产地证书',
+    issuing_authority   TEXT,
+    issuing_authority_zh TEXT,
+    website_url         TEXT,
+    fee_usd_min         REAL,
+    fee_usd_max        REAL,
+    fee_cny_note        TEXT,
+    days_min           INTEGER,
+    days_max           INTEGER,
+    doc_requirements    TEXT,
+    step_sequence       TEXT,
+    api_available       INTEGER DEFAULT 0,
+    notes               TEXT,
+    is_active           INTEGER DEFAULT 1,
+    updated_at          TEXT DEFAULT (datetime('now'))
+);
+
+-- Supplier database
+CREATE TABLE IF NOT EXISTS suppliers (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_zh            TEXT NOT NULL,
+    name_en            TEXT,
+    country             TEXT NOT NULL,
+    region             TEXT,
+    main_products       TEXT,
+    main_hs_codes       TEXT,
+    contact_name        TEXT,
+    contact_email       TEXT,
+    contact_phone       TEXT,
+    website             TEXT,
+    min_order_kg        REAL,
+    payment_terms       TEXT,
+    export_years        INTEGER DEFAULT 0,
+    annual_export_tons REAL,
+    verified_chamber    INTEGER DEFAULT 0,
+    verified_实地拜访   INTEGER DEFAULT 0,
+    verified_sgs        INTEGER DEFAULT 0,
+    rating_avg          REAL DEFAULT 0,
+    review_count        INTEGER DEFAULT 0,
+    status              TEXT DEFAULT 'verified',
+    intro               TEXT,
+    certifications      TEXT,
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now'))
+);
+
+-- Supplier reviews
+CREATE TABLE IF NOT EXISTS supplier_reviews (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id         INTEGER NOT NULL,
+    user_id             INTEGER,
+    user_email          TEXT,
+    quality_score       REAL,
+    delivery_score      REAL,
+    communication_score REAL,
+    comment             TEXT,
+    is_verified_deal    INTEGER DEFAULT 0,
+    created_at          TEXT DEFAULT (datetime('now'))
+);
+
+-- Certificate application records (user workflow tracking)
+CREATE TABLE IF NOT EXISTS cert_applications (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER NOT NULL,
+    hs_code             TEXT,
+    origin_country       TEXT,
+    cert_type           TEXT DEFAULT 'CO',
+    status              TEXT DEFAULT 'in_progress',
+    current_step        INTEGER DEFAULT 1,
+    steps_completed      TEXT DEFAULT '{}',
+    ai_doc_generated    INTEGER DEFAULT 0,
+    submitted_at        TEXT,
+    cert_number         TEXT,
+    notes               TEXT,
+    created_at          TEXT DEFAULT (datetime('now')),
+    updated_at          TEXT DEFAULT (datetime('now'))
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_hs_codes_hs4     ON hs_codes(hs_4);
 CREATE INDEX IF NOT EXISTS idx_hs_codes_name    ON hs_codes(name_zh);
@@ -193,6 +296,10 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_user   ON api_keys(user_id);
 CREATE INDEX IF NOT EXISTS idx_sub_accounts_parent ON sub_accounts(parent_user_id);
 CREATE INDEX IF NOT EXISTS idx_usage_logs_key  ON usage_logs(api_key_id);
 CREATE INDEX IF NOT EXISTS idx_usage_logs_day  ON usage_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_freight_origin   ON freight_routes(origin_country);
+CREATE INDEX IF NOT EXISTS idx_cert_guides_country ON cert_guides(country_code);
+CREATE INDEX IF NOT EXISTS idx_suppliers_country ON suppliers(country);
+CREATE INDEX IF NOT EXISTS idx_supplier_reviews_sid ON supplier_reviews(supplier_id);
 """
 
 
@@ -367,6 +474,466 @@ HS_CODES_SEED = [
 SEED_ADMIN_EMAIL = "admin@africa-zero.com"
 SEED_ADMIN_PASSWORD = "AfricaZero2026Admin!"
 
+# ─── Seed data: Freight routes ─────────────────────────────────────────────────
+# (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh, type, cost_min, cost_max, days_min, days_max, notes)
+FREIGHT_ROUTES_SEED = [
+    # Ethiopia → China (via Djibouti)
+    ("ET", "Djibouti", "吉布提港", "SHA", "上海港", "sea20gp", 1800, 2500, 28, 35, "埃塞俄比亚主要出海口，需经亚的斯亚贝巴陆运至吉布提"),
+    ("ET", "Djibouti", "吉布提港", "CAN", "广州港", "sea20gp", 1900, 2600, 28, 35, "散货按吨计约$0.05-0.10/kg"),
+    ("ET", "Djibouti", "吉布提港", "NGB", "宁波港", "sea20gp", 1850, 2550, 28, 35, "埃塞俄比亚内陆运输约5-7天"),
+    # Kenya → China
+    ("KE", "Mombasa", "蒙巴萨港", "SHA", "上海港", "sea20gp", 1900, 2700, 25, 32, "东非主干航线，船期稳定"),
+    ("KE", "Mombasa", "蒙巴萨港", "CAN", "广州港", "sea20gp", 1950, 2750, 25, 32, "东非红海航线，经印度洋"),
+    ("KE", "Mombasa", "蒙巴萨港", "NGB", "宁波港", "sea20gp", 1900, 2700, 25, 32, ""),
+    # Tanzania → China
+    ("TZ", "Dar es Salaam", "达累斯萨拉姆", "SHA", "上海港", "sea20gp", 2000, 2800, 28, 38, "坦赞铁路起点，东非重要港口"),
+    ("TZ", "Dar es Salaam", "达累斯萨拉姆", "CAN", "广州港", "sea20gp", 2050, 2900, 28, 38, ""),
+    # South Africa → China
+    ("ZA", "Durban", "德班港", "SHA", "上海港", "sea20gp", 2200, 3200, 30, 42, "南非主要港口，散货船为主"),
+    ("ZA", "Durban", "德班港", "CAN", "广州港", "sea20gp", 2300, 3300, 30, 42, "远洋航线，经马六甲"),
+    ("ZA", "Cape Town", "开普敦港", "SHA", "上海港", "sea20gp", 2300, 3300, 32, 45, ""),
+    # Ghana → China
+    ("GH", "Tema", "特马港", "SHA", "上海港", "sea20gp", 2100, 3000, 30, 40, "西非重要港口，加纳可可出口港"),
+    ("GH", "Tema", "特马港", "CAN", "广州港", "sea20gp", 2150, 3100, 30, 40, ""),
+    # Cote d'Ivoire → China
+    ("CI", "Abidjan", "阿比让港", "SHA", "上海港", "sea20gp", 2100, 3000, 30, 40, "法语区西非最大港"),
+    ("CI", "Abidjan", "阿比让港", "CAN", "广州港", "sea20gp", 2150, 3100, 30, 40, ""),
+    # Nigeria → China
+    ("NG", "Lagos", "拉各斯港", "SHA", "上海港", "sea20gp", 2200, 3200, 32, 45, "西非最大港，货物常经迪拜中转"),
+    ("NG", "Lagos", "拉各斯港", "CAN", "广州港", "sea20gp", 2250, 3250, 32, 45, "需注意尼日利亚清关较复杂"),
+    # Uganda → China (via Mombasa)
+    ("UG", "Mombasa", "蒙巴萨港", "SHA", "上海港", "sea20gp", 2000, 2800, 30, 40, "乌干达货物经肯尼亚蒙巴萨出海"),
+    ("UG", "Mombasa", "蒙巴萨港", "CAN", "广州港", "sea20gp", 2050, 2850, 30, 40, ""),
+    # Rwanda → China (via Dar/Mombasa)
+    ("RW", "Dar es Salaam", "达累斯萨拉姆", "SHA", "上海港", "sea20gp", 2100, 2950, 30, 42, "卢旺达货物经坦桑达港或肯尼亚蒙巴萨"),
+    # Mozambique → China
+    ("MZ", "Beira", "贝拉港", "SHA", "上海港", "sea20gp", 2100, 3000, 30, 42, "东非航线，煤/矿为主"),
+    # Egypt → China (via Suez)
+    ("EG", "Port Said", "塞得港", "SHA", "上海港", "sea20gp", 1800, 2500, 22, 30, "经苏伊士运河，走亚欧航线"),
+    ("EG", "Port Said", "塞得港", "CAN", "广州港", "sea20gp", 1850, 2600, 22, 30, "地中海航线，船期稳定"),
+    # Morocco → China
+    ("MA", "Tanger Med", "丹吉尔港", "SHA", "上海港", "sea20gp", 1900, 2700, 28, 38, "地中海-大西洋枢纽，经直布罗陀"),
+    # Angola → China
+    ("AO", "Luanda", "罗安达港", "SHA", "上海港", "sea20gp", 2300, 3300, 35, 50, "石油为主，散货矿砂较多"),
+    # DR Congo → China (via Dar/Durban)
+    ("CD", "Dar es Salaam", "达累斯萨拉姆", "SHA", "上海港", "sea20gp", 2200, 3200, 35, 50, "刚果（金）经坦桑出海，陆运较复杂"),
+    # Zambia → China (via Durban/Dar)
+    ("ZM", "Durban", "德班港", "SHA", "上海港", "sea20gp", 2200, 3200, 32, 48, "铜带省货物经南非德班"),
+    # Zimbabwe → China (via Durban)
+    ("ZW", "Durban", "德班港", "SHA", "上海港", "sea20gp", 2250, 3250, 32, 48, "烟草/矿砂为主"),
+    # Malawi → China (via Beira/Durban)
+    ("MW", "Beira", "贝拉港", "SHA", "上海港", "sea20gp", 2150, 3100, 32, 48, ""),
+    # Madagascar → China
+    ("MG", "Toamasina", "图阿马西纳港", "SHA", "上海港", "sea20gp", 2000, 2900, 22, 30, "印度洋航线，香草/矿石为主"),
+    ("MG", "Toamasina", "图阿马西纳港", "CAN", "广州港", "sea20gp", 1950, 2800, 22, 30, ""),
+    # Mauritius → China
+    ("MU", "Port Louis", "路易港", "SHA", "上海港", "sea20gp", 1900, 2700, 20, 28, "印度洋自由港，转口贸易活跃"),
+    # Djibouti → China (direct)
+    ("DJ", "Djibouti", "吉布提港", "SHA", "上海港", "sea20gp", 1750, 2400, 22, 28, "红海入口，中国海军补给港"),
+    ("DJ", "Djibouti", "吉布提港", "CAN", "广州港", "sea20gp", 1700, 2350, 22, 28, "距中国近，海运费相对较低"),
+    # Cameroon → China
+    ("CM", "Douala", "杜阿拉港", "SHA", "上海港", "sea20gp", 2150, 3100, 32, 45, "中非地区主要出海口"),
+    # Gabon → China
+    ("GA", "Port Gentil", "谦蒂尔港", "SHA", "上海港", "sea20gp", 2250, 3200, 35, 50, "石油/锰矿为主"),
+    # Senegal → China
+    ("SN", "Dakar", "达喀尔港", "SHA", "上海港", "sea20gp", 2100, 3000, 30, 42, "西非重要港口，花生/磷酸盐"),
+    # Groundnut/peanut exports from West Africa
+    ("SN", "Dakar", "达喀尔港", "CAN", "广州港", "sea20gp", 2150, 3050, 30, 42, ""),
+    # 40GP container rates (typically 2x 20GP for same volume)
+    ("ET", "Djibouti", "吉布提港", "SHA", "上海港", "sea40hp", 3200, 4500, 28, 35, "40GP集装箱，约为20GP的1.8倍"),
+    ("KE", "Mombasa", "蒙巴萨港", "SHA", "上海港", "sea40hp", 3400, 4800, 25, 32, ""),
+    ("ET", "Djibouti", "吉布提港", "CAN", "广州港", "sea40hp", 3300, 4600, 28, 35, ""),
+    # Air freight (expensive, fast) — per kg
+    ("ET", "ADD", "亚的斯亚贝巴机场", "SHA", "上海浦东机场", "air", 8, 18, 1, 3, "空运按公斤计，适合高价值样品（咖啡/可可样品）"),
+    ("KE", "NBO", "内罗毕机场", "CAN", "广州白云机场", "air", 7, 15, 1, 3, "非洲空运枢纽，鲜花/咖啡豆空运"),
+]
+
+# ─── Seed data: Certificate of Origin guides ──────────────────────────────────
+# (country_code, country_name_zh, cert_type, issuing_authority, website, fee_min, fee_max, days_min, days_max, requirements, steps, api, notes)
+CERT_GUIDES_SEED = [
+    (
+        "ET", "埃塞俄比亚", "CO",
+        "Ethiopian Chamber of Commerce and Sectoral Associations (ECCSA)",
+        "埃塞俄比亚商会", "https://www.eccsa.com", 30, 80, 3, 7,
+        "申请表、发票、装箱单、原产地声明、生产工艺说明",
+        "1.联系供应商准备文件|2.向ECCSA提交申请|3.支付证书费|4.领取证书|5.快递至中国进口商",
+        0, "埃塞俄比亚最大商会，可办理一般原产地证CO"
+    ),
+    (
+        "KE", "肯尼亚", "CO",
+        "Kenya National Chamber of Commerce and Industry (KNCCI)",
+        "肯尼亚国家工商会", "https://www.kenyachamber.org", 40, 100, 3, 5,
+        "申请表、发票、装箱单、出口商声明、货物描述",
+        "1.准备商业发票|2.联系KNCCI当地分会|3.提交申请|4.审核通过后缴费|5.取证",
+        0, "肯尼亚贸工部授权机构，需在当地有办公点"
+    ),
+    (
+        "TZ", "坦桑尼亚", "CO",
+        "Tanzania Chamber of Commerce, Industry and Agriculture (TCCIA)",
+        "坦桑尼亚工商农商会", "http://www.tccia.com", 35, 90, 3, 7,
+        "申请表、发票、出口商声明、货物明细表",
+        "1.出口商向TCCIA提交|2.审核货物原产资格|3.缴纳费用|4.签发证书",
+        0, "坦桑尼亚官方授权办理机构"
+    ),
+    (
+        "GH", "加纳", "CO",
+        "Ghana Export Promotion Authority (GEPA)",
+        "加纳出口促进局", "https://www.gepaghana.gov.gh", 30, 70, 2, 5,
+        "申请表、发票、装箱单、出口商声明、产品质量证书",
+        "1.出口商注册|2.向GEPA提交原产证申请|3.审核|4.缴费取证|5.快递",
+        0, "加纳贸工部下属机构，专管出口认证"
+    ),
+    (
+        "ZA", "南非", "CO",
+        "South African Chamber of Commerce and Industry (Sacci)",
+        "南非商会", "https://www.sacci.org.za", 50, 120, 2, 5,
+        "申请表、商业发票、装箱单、出口商声明、原产地证书表格",
+        "1.向Sacci提交|2.审核文件|3.缴费|4.取证或电子签发",
+        0, "南非是唯一同时与中国和非洲都有EPA的国家，证书体系最完善"
+    ),
+    (
+        "EG", "埃及", "CO",
+        "Federation of Egyptian Chambers of Commerce",
+        "埃及商会联合会", "https://www.fedex.gov.eg", 40, 100, 3, 7,
+        "申请表、发票、装箱单、出口商声明、产品质量证明",
+        "1.出口商向当地商会申请|2.提交完整文件|3.审核|4.缴费|5.领取证书",
+        0, "埃及海关接受贸促会认证的中国版式"
+    ),
+    (
+        "CI", "科特迪瓦", "CO",
+        "Confederation Generale des Enterprises de Cote d'Ivoire (CGECI)",
+        "科特迪瓦企业总联合会", "https://www.cgeci.org", 35, 85, 3, 6,
+        "申请表、发票、装箱单、出口商声明、加工工序说明",
+        "1.联系CGECI|2.提交申请文件|3.审核|4.缴费|5.取证",
+        0, "法语区，需准备法语版文件"
+    ),
+    (
+        "NG", "尼日利亚", "CO",
+        "Nigerian Association of Chambers of Commerce, Industry, Mines and Agriculture (NACCIMA)",
+        "尼日利亚工商农商会协会", "https://www.naccima.com", 45, 110, 3, 7,
+        "申请表、发票、装箱单、Nexus卡片、出口商声明",
+        "1.出口商NEXUS注册|2.向NACCIMA申请|3.提交全部文件|4.审核|5.取证",
+        0, "尼日利亚海关较复杂，建议使用专业清关代理"
+    ),
+    (
+        "MG", "马达加斯加", "CO",
+        "Confederation of Malagasy Trade (FTM)",
+        "马达加斯加工会联合会", "http://www.ftm.mg", 30, 75, 3, 6,
+        "申请表、发票、装箱单、出口商声明",
+        "1.向FTM提交|2.审核|3.缴费|4.取证",
+        0, "法语区，香草、丁香等特产出口较多"
+    ),
+    (
+        "UG", "乌干达", "CO",
+        "Uganda Chamber of Commerce and Industry (UCCI)",
+        "乌干达工商会", "https://www.ucci.org.ug", 30, 80, 2, 5,
+        "申请表、发票、装箱单、出口商声明",
+        "1.联系UCCI|2.提交文件|3.审核|4.缴费取证",
+        0, ""
+    ),
+    (
+        "RW", "卢旺达", "CO",
+        "Private Sector Federation (PSF) Rwanda",
+        "卢旺达私营企业联合会", "https://www.psf.gov.rw", 25, 70, 2, 5,
+        "申请表、发票、出口商声明、货物说明",
+        "1.向PSF提交|2.审核|3.缴费|4.取证",
+        0, "卢旺达政府积极推动出口，流程相对简化"
+    ),
+    (
+        "MU", "毛里求斯", "CO",
+        "Mauritius Chamber of Commerce and Industry (MCCI)",
+        "毛里求斯工商会", "https://www.mcci.org", 40, 90, 2, 4,
+        "申请表、发票、装箱单、出口商声明",
+        "1.向MCCI提交|2.审核|3.缴费|4.取证|5.快递",
+        0, "毛里求斯是自由港，认证体系成熟"
+    ),
+]
+
+# ─── Seed data: Supplier database (Phase 1 - seed suppliers) ──────────────────
+# (name_zh, name_en, country, region, products, hs_codes, contact_email, min_kg, payment, export_years, verified_chamber, status, intro)
+SUPPLIERS_SEED = [
+    (
+        "耶加雪菲咖啡出口商合作社",
+        "Yirgacheffe Coffee Farmers Cooperative Union",
+        "ET", "Yirgacheffe, Gedeo Zone",
+        "水洗咖啡豆|日晒咖啡豆|耶加雪菲产区生豆",
+        "0901.11",
+        "export@yirgacheffe-coffee.et",
+        500,
+        "L/C, T/T",
+        4,
+        1,
+        "verified",
+        "埃塞俄比亚耶加雪菲产区最大合作社之一，专注精品水洗豆，年出口量约300吨，主要市场日本、欧美，近年开拓中国市场。"
+    ),
+    (
+        "科契尔产区咖啡公司",
+        "Kochere Coffee Producer Company",
+        "ET", "Kochere, SNNPR",
+        "科契尔水洗豆|精品咖啡|有机认证咖啡",
+        "0901.11",
+        "info@kochere-coffee.et",
+        200,
+        "T/T, L/C",
+        3,
+        1,
+        "verified",
+        "位于耶加雪菲产区南部科契尔区，专注高海拔精品豆，有机认证，适合高端电商渠道。"
+    ),
+    (
+        "西达摩产区出口商",
+        "Sidama Coffee Farmers Cooperative",
+        "ET", "Sidama Zone, Hawassa",
+        "西达摩水洗豆|日晒耶加|拼配咖啡豆",
+        "0901.11",
+        "sales@sidama-coffee.et",
+        1000,
+        "L/C, T/T",
+        2,
+        1,
+        "verified",
+        "西达摩是埃塞俄比亚最重要的咖啡产区之一，产量大、品质稳定，适合电商大批量采购。"
+    ),
+    (
+        "蒙巴萨坚果与农产品出口公司",
+        "Mombasa Nuts & Agricultural Exports Ltd",
+        "KE", "Mombasa, Coast Province",
+        "腰果|去壳腰果|烘焙腰果",
+        "0801.32",
+        "exports@mombasa-nuts.co.ke",
+        1000,
+        "T/T",
+        5,
+        1,
+        "verified",
+        "肯尼亚蒙巴萨最大的腰果出口商之一，和西非竞争有地理优势，适合食品加工企业采购。"
+    ),
+    (
+        "坦桑尼亚芝麻出口公司",
+        "Tanzania Sesame Exports Co.",
+        "TZ", "Shinyanga Region",
+        "白芝麻|黑芝麻|有机芝麻",
+        "1207.40",
+        "info@tz-sesame.co.tz",
+        5000,
+        "T/T, L/C",
+        3,
+        1,
+        "verified",
+        "坦桑尼亚是全球最大芝麻生产国之一，年产约12万吨，该公司专注有机认证芝麻，主要出口中国和印度。"
+    ),
+    (
+        "加纳可可与巧克力出口公司",
+        "Ghana Cocoa & Chocolate Exporters Ltd",
+        "GH", "Ashanti Region, Kumasi",
+        "可可豆|可可脂|可可液块",
+        "1801.00, 1803.10, 1804.00",
+        "export@ghana-cocoa.gh",
+        2000,
+        "L/C, T/T",
+        6,
+        1,
+        "verified",
+        "加纳是全球第二大可可生产国，该公司直接与可可局（ Cocobod）合作，保证品质和溯源，适合巧克力工厂采购。"
+    ),
+    (
+        "科特迪瓦可可出口集团",
+        "Côte d'Ivoire Cocoa Export Group",
+        "CI", "Abidjan, Soubré",
+        "可可豆|可可饼|可可粉",
+        "1801.00, 1805.00",
+        "ventes@civ-cocoa.ci",
+        3000,
+        "L/C",
+        4,
+        1,
+        "verified",
+        "科特迪瓦是全球最大可可生产国，该公司供应各等级可可豆，价格有竞争力，适合大宗采购。"
+    ),
+    (
+        "南非矿业出口公司",
+        "South Africa Minerals & Mining Export (Pty) Ltd",
+        "ZA", "Johannesburg, Northern Cape",
+        "锰矿精矿|铁矿砂|铬矿",
+        "2602.00, 2603.00, 2610.00",
+        "exports@sa-minerals.co.za",
+        100000,
+        "L/C",
+        10,
+        1,
+        "verified",
+        "南非最大矿业出口商之一，专业出口各类金属矿砂，有完善的检测报告体系（SGS/INTERTEK），适合钢铁厂和冶炼厂。"
+    ),
+    (
+        "摩洛哥橄榄油与坚果出口公司",
+        "Morocco Olive Oil & Nuts Export SARL",
+        "MA", "Meknes, Fes-Meknes",
+        "初榨橄榄油|去壳榛子|杏仁",
+        "1509.10, 0802.22",
+        "export@ma-olive-nuts.ma",
+        500,
+        "T/T, L/C",
+        3,
+        1,
+        "verified",
+        "摩洛哥是全球最大橄榄油生产国之一，该公司同时出口优质坚果，适合食品电商和礼品渠道。"
+    ),
+    (
+        "埃及棉纤维出口公司",
+        "Egyptian Cotton & Fiber Export Co.",
+        "EG", "Alexandria, Beheira Governorate",
+        "长绒棉|棉纤维|纱线",
+        "5201.00, 5203.00",
+        "trade@eg-cotton.com.eg",
+        10000,
+        "L/C",
+        8,
+        1,
+        "verified",
+        "埃及吉扎棉是全球最优质棉花之一，该公司直接与棉农合作，提供溯源证明，适合纺织企业。"
+    ),
+    (
+        "卢旺达高地茶出口公司",
+        "Rwanda Highlands Tea Exporters",
+        "RW", "Ruhengeri, Northern Province",
+        "红茶|绿茶|紫茶",
+        "0902.40",
+        "sales@rwanda-tea.rw",
+        500,
+        "T/T",
+        2,
+        1,
+        "verified",
+        "卢旺达高山茶以花香和果香著称，在欧美高端市场有口碑，适合精品茶电商和礼品采购。"
+    ),
+    (
+        "马达加斯加香草出口商",
+        "Madagascar Vanilla & Spices Export SARL",
+        "MG", "Sava Region, Toamasina",
+        "香草豆|丁香|依兰依兰精油",
+        "0905.00, 0907.00, 3301.29",
+        "export@mg-vanilla.mg",
+        100,
+        "T/T, L/C",
+        5,
+        1,
+        "verified",
+        "马达加斯加供应全球约80%的香草，该公司位于香草主产区萨瓦区，提供有机认证香草，适合食品和香水行业。"
+    ),
+    (
+        "毛里求斯蔗糖出口公司",
+        "Mauritius Sugar Export Corporation",
+        "MU", "Port Louis, Moka",
+        "有机蔗糖|红糖|糖浆",
+        "1701.13, 1701.14",
+        "trade@mu-sugar.mu",
+        5000,
+        "L/C, T/T",
+        7,
+        1,
+        "verified",
+        "毛里求斯甘蔗种植历史悠久，有机蔗糖在欧美市场有稳定需求，适合食品加工和零售电商。"
+    ),
+    (
+        "塞内加尔花生出口合作社",
+        "Senegal Groundnut Export Cooperative",
+        "SN", "Kaolack, Fatick",
+        "花生|花生油|花生酱原料",
+        "1202.30, 1508.10",
+        "coop@sn-groundnut.sn",
+        10000,
+        "T/T",
+        3,
+        1,
+        "verified",
+        "塞内加尔是西非最大花生生产国，该公司直接与合作社对接，价格竞争力强，适合榨油和食品加工。"
+    ),
+    (
+        "乌干达咖啡出口公司",
+        "Uganda Coffee Export Company Ltd",
+        "UG", "Kampala, Bugisu Region",
+        "阿拉比卡生豆|罗布斯塔|水洗豆",
+        "0901.11",
+        "export@ug-coffee.ug",
+        500,
+        "L/C, T/T",
+        4,
+        1,
+        "verified",
+        "乌干达咖啡豆品质优良，布吉苏产区（Bugisu）咖啡有PDO潜力，适合精品烘焙电商。"
+    ),
+    (
+        "吉布提港口物流与贸易公司",
+        "Djibouti Port Trade & Logistics Co.",
+        "DJ", "Djibouti City, Tadjourah",
+        "咖啡物流|芝麻|皮革原料",
+        "0901.11, 1207.40, 4101.20",
+        "trade@djibouti-port.dj",
+        1000,
+        "T/T",
+        6,
+        1,
+        "verified",
+        "吉布提是中国一带一路重要节点，该公司提供从埃塞俄比亚到吉布提港的全套物流清关服务，适合第一次从非洲进口的企业。"
+    ),
+    (
+        "尼日利亚可可出口公司",
+        "Nigeria Cocoa Export Company",
+        "NG", "Lagos, Cross River State",
+        "可可豆|可可脂|可可饼",
+        "1801.00, 1804.00",
+        "exports@ng-cocoa.ng",
+        5000,
+        "L/C",
+        2,
+        0,
+        "new",
+        "尼日利亚非洲最大人口国，可可产量全球第四，该公司近年开始开拓中国市场，提供SGS检测报告。"
+    ),
+    (
+        "赞比亚铜带矿业公司",
+        "Zambia Copperbelt Mining & Exports Ltd",
+        "ZM", "Kitwe, Copperbelt Province",
+        "铜矿砂|钴矿|锌矿",
+        "2603.00, 2605.00, 2608.00",
+        "sales@zm-copperbelt.zm",
+        50000,
+        "L/C",
+        8,
+        1,
+        "verified",
+        "赞比亚铜带省是全球重要铜矿区，该公司长期向中国出口矿砂，有长期合同经验，适合大型冶炼厂。"
+    ),
+    (
+        "贝宁棉花出口公司",
+        "Benin Cotton Exporters SARL",
+        "BJ", "Cotonou, Borgou",
+        "原棉|棉籽|棉纱",
+        "5201.00, 5203.00",
+        "export@bj-cotton.bj",
+        10000,
+        "T/T, L/C",
+        3,
+        1,
+        "verified",
+        "贝宁是西非重要棉花生产国，该公司与法国公司合作管理棉田，质量稳定，适合纺织企业。"
+    ),
+    (
+        "喀麦隆可可出口公司",
+        "Cameroon Cocoa Export SA",
+        "CM", "Douala, South Region",
+        "可可豆|可可脂|可可壳",
+        "1801.00, 1804.00",
+        "trade@cm-cocoa.cm",
+        2000,
+        "L/C",
+        2,
+        0,
+        "new",
+        "喀麦隆可可香气浓郁，适合精品巧克力生产，该公司位于杜阿拉港口城市，物流便利。"
+    ),
+]
+
 
 def init_db(db_path: str) -> None:
     """Create tables and seed data if empty. Handles existing DB upgrades."""
@@ -391,7 +958,7 @@ def init_db(db_path: str) -> None:
     except Exception:
         pass
 
-    # Seed countries if empty
+    # ── Seed countries if empty ──────────────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM africa_countries")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
@@ -399,7 +966,7 @@ def init_db(db_path: str) -> None:
             AFRICA_COUNTRIES
         )
 
-    # Seed HS codes if empty OR re-seed to ensure all new entries are present
+    # ── Seed HS codes if empty OR re-seed ────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM hs_codes")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
@@ -409,13 +976,47 @@ def init_db(db_path: str) -> None:
             HS_CODES_SEED
         )
     else:
-        # Force re-seed: delete and re-insert to capture any new entries added to seed data
         cursor.execute("DELETE FROM hs_codes")
         cursor.executemany(
             """INSERT INTO hs_codes
                (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             HS_CODES_SEED
+        )
+
+    # ── Seed freight routes if empty ──────────────────────────────────────────
+    cursor.execute("SELECT COUNT(*) FROM freight_routes")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            """INSERT OR IGNORE INTO freight_routes
+               (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh,
+                transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            FREIGHT_ROUTES_SEED
+        )
+
+    # ── Seed certificate guides if empty ──────────────────────────────────────
+    cursor.execute("SELECT COUNT(*) FROM cert_guides")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            """INSERT OR IGNORE INTO cert_guides
+               (country_code, country_name_zh, cert_type, issuing_authority,
+                issuing_authority_zh, website_url, fee_usd_min, fee_usd_max,
+                days_min, days_max, doc_requirements, step_sequence, api_available, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            CERT_GUIDES_SEED
+        )
+
+    # ── Seed suppliers if empty ───────────────────────────────────────────────
+    cursor.execute("SELECT COUNT(*) FROM suppliers")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            """INSERT OR IGNORE INTO suppliers
+               (name_zh, name_en, country, region, main_products, main_hs_codes,
+                contact_email, min_order_kg, payment_terms, export_years,
+                verified_chamber, status, intro)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            SUPPLIERS_SEED
         )
 
     conn.commit()

@@ -36,6 +36,9 @@ const TOOLS = {
   PRICING: 'pricing',
   DASHBOARD: 'dashboard',
   HOME: 'home',
+  FREIGHT: 'freight',
+  CERTIFICATE: 'certificate',
+  SUPPLIERS: 'suppliers',
 } as const
 
 type ToolName = string
@@ -82,6 +85,16 @@ interface TrackAPI {
 
   // 主页
   homeCtaClick: (ctaLabel: string, targetPath: string) => void
+
+  // 物流成本估算
+  freightEstimate: (params: Record<string, unknown>) => void
+
+  // 原产地证书
+  certDocGenerate: (success: boolean, country: string) => void
+
+  // 供应商发现
+  supplierSearch: (params: Record<string, unknown>) => void
+  supplierOpen: (supplierId: number, country: string) => void
 
   // 通用点击
   click: (label: string, category?: string, data?: Record<string, unknown>) => void
@@ -263,6 +276,37 @@ export const track: TrackAPI = {
   // ── 主页 ─────────────────────────────────────────────────────────────────
   homeCtaClick: (ctaLabel, targetPath) => {
     safeTool(TOOLS.HOME, 'cta_click')({ cta_label: ctaLabel, target_path: targetPath })
+  },
+
+  // ── 物流成本估算 ─────────────────────────────────────────────────────────
+  freightEstimate: (params) => {
+    safeTool(TOOLS.FREIGHT, 'estimate')({
+      origin: params.origin,
+      dest: params.dest,
+      qty_kg: params.qty,
+      transport_type: params.type,
+    })
+  },
+
+  // ── 原产地证书 ──────────────────────────────────────────────────────────
+  certDocGenerate: (success, country) => {
+    safeTool(TOOLS.CERTIFICATE, success ? 'doc_generate_success' : 'doc_generate_error')({ country })
+  },
+
+  // ── 供应商发现 ──────────────────────────────────────────────────────────
+  supplierSearch: (params) => {
+    safeTool(TOOLS.SUPPLIERS, 'search')({
+      country: params.country,
+      keyword: params.keyword,
+      verified_only: params.verified_only,
+    })
+  },
+
+  supplierOpen: (supplierId, country) => {
+    safeTool(TOOLS.SUPPLIERS, 'open_supplier')({
+      supplier_id: supplierId,
+      country,
+    })
   },
 
   // ── 通用 ──────────────────────────────────────────────────────────────────

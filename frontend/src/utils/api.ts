@@ -22,6 +22,18 @@ import type {
   CreateApiKeyRequest,
   AdminUserSummary,
   AdminStats,
+  FreightRoute,
+  FreightEstimateInput,
+  FreightEstimateResult,
+  CertGuide,
+  CertStepsResponse,
+  CertDocGenerateInput,
+  CertDocGenerateResult,
+  Supplier,
+  SupplierSearchResult,
+  SupplierReview,
+  SupplierReviewCreate,
+  SupplierCompareResult,
 } from '../types'
 
 // ─── API Base URL ─────────────────────────────────────────────────────────────
@@ -210,3 +222,136 @@ export async function adminCreateSubscription(userId: number, tier: string) {
   return data
 }
 
+// ─── Freight ─────────────────────────────────────────────────────────────────
+export async function listFreightRoutes(params?: {
+  origin_country?: string
+  dest_port?: string
+  transport_type?: string
+}) {
+  const { data } = await api.get('/freight/routes', { params })
+  return data as FreightRoute[]
+}
+
+export async function listFreightCountries() {
+  const { data } = await api.get('/freight/routes/countries')
+  return data as { code: string; name_zh: string; name_en?: string }[]
+}
+
+export async function listDestPorts() {
+  const { data } = await api.get('/freight/routes/ports')
+  return data as { code: string; name_zh: string }[]
+}
+
+export async function estimateFreightCost(input: FreightEstimateInput) {
+  const { data } = await api.post<FreightEstimateResult>('/freight/estimate', input)
+  return data
+}
+
+// ─── Certificate ──────────────────────────────────────────────────────────────
+export async function listCertGuides(country?: string) {
+  const { data } = await api.get('/certificate/guides', {
+    params: country ? { country } : {},
+  })
+  return data as CertGuide[]
+}
+
+export async function getCertGuide(countryCode: string) {
+  const { data } = await api.get<CertGuide>(`/certificate/guides/${countryCode}`)
+  return data
+}
+
+export async function getCertSteps(countryCode: string) {
+  const { data } = await api.get<CertStepsResponse>(`/certificate/steps`, {
+    params: { country_code: countryCode },
+  })
+  return data
+}
+
+export async function startCertApplication(input: {
+  hs_code: string
+  origin_country: string
+  cert_type?: string
+}) {
+  const { data } = await api.post('/certificate/application/start', input)
+  return data as { message: string; application_id: number }
+}
+
+export async function getMyCertApplications() {
+  const { data } = await api.get('/certificate/application')
+  return data as Array<{
+    id: number
+    hs_code: string
+    origin_country: string
+    cert_type: string
+    status: string
+    current_step: number
+    steps_completed: Record<string, boolean>
+    ai_doc_generated: boolean
+    submitted_at?: string
+    cert_number?: string
+    created_at?: string
+  }>
+}
+
+export async function generateCertDocument(input: CertDocGenerateInput) {
+  const { data } = await api.post<CertDocGenerateResult>(
+    '/certificate/document/generate',
+    input,
+  )
+  return data
+}
+
+// ─── Supplier ─────────────────────────────────────────────────────────────────
+export async function searchSuppliers(params?: {
+  country?: string
+  keyword?: string
+  hs_code?: string
+  verified_only?: boolean
+  page?: number
+  page_size?: number
+}): Promise<SupplierSearchResult> {
+  const { data } = await api.get<SupplierSearchResult>('/suppliers', { params })
+  return data
+}
+
+export async function listSupplierCountries() {
+  const { data } = await api.get('/suppliers/countries')
+  return data as {
+    code: string
+    name_zh: string
+    name_en?: string
+    supplier_count: number
+    verified_count: number
+  }[]
+}
+
+export async function getSupplier(id: number) {
+  const { data } = await api.get<Supplier>(`/suppliers/${id}`)
+  return data
+}
+
+export async function getSupplierReviews(
+  supplierId: number,
+  page = 1,
+  pageSize = 10,
+) {
+  const { data } = await api.get(`/suppliers/${supplierId}/reviews`, {
+    params: { page, page_size: pageSize },
+  })
+  return data as { reviews: SupplierReview[]; total: number; page: number; page_size: number }
+}
+
+export async function createSupplierReview(review: SupplierReviewCreate) {
+  const { data } = await api.post(
+    `/suppliers/${review.supplier_id}/reviews`,
+    review,
+  )
+  return data as { message: string; review_id: number; new_rating: number }
+}
+
+export async function getSupplierCompare(supplierId: number) {
+  const { data } = await api.get<SupplierCompareResult>(
+    `/suppliers/${supplierId}/compare`,
+  )
+  return data
+}

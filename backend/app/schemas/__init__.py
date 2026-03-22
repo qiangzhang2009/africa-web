@@ -230,3 +230,119 @@ class ApiKeyWithPlain(BaseModel):
     is_active: bool = True
     last_used_at: Optional[str] = None
     created_at: Optional[str] = None
+
+
+# ─── Freight ─────────────────────────────────────────────────────────────────────
+
+class FreightRoute(BaseModel):
+    id: int
+    origin_country: str
+    origin_port: str
+    origin_port_zh: str
+    dest_country: str
+    dest_port: str
+    dest_port_zh: str
+    transport_type: str
+    cost_min_usd: float
+    cost_max_usd: float
+    transit_days_min: int
+    transit_days_max: int
+    notes: Optional[str] = None
+
+
+class FreightEstimateInput(BaseModel):
+    origin_country: str = Field(..., min_length=2, max_length=3)
+    dest_port: str = Field(..., description="目的港代码: SHA/CAN/NGB")
+    quantity_kg: float = Field(..., gt=0)
+    transport_type: str = Field(default="sea20gp")
+
+
+class FreightEstimateResult(BaseModel):
+    origin_country: str
+    origin_port: str
+    origin_port_zh: str
+    dest_port: str
+    dest_port_zh: str
+    transport_type: str
+    quantity_kg: float
+    container_suggestion: str
+    sea_freight_usd: float
+    sea_freight_cny: float
+    port_charges_usd: float
+    insurance_usd: float
+    clearance_agent_fee_cny: float
+    domestic_logistics_cny: float
+    total_freight_cny: float
+    total_freight_usd: float
+    transit_days: str
+    notes: Optional[str] = None
+    breakdown: dict
+
+
+# ─── Certificate ────────────────────────────────────────────────────────────────
+
+class CertGuideListItem(BaseModel):
+    id: int
+    country_code: str
+    country_name_zh: str
+    cert_type_zh: str
+    issuing_authority_zh: str
+    fee_usd_min: float
+    fee_usd_max: float
+    days_min: int
+    days_max: int
+    api_available: bool
+
+
+class CertDocGenerateInput(BaseModel):
+    hs_code: str
+    origin_country: str
+    processing_steps: list[str] = Field(default_factory=list)
+    material_sources: list[str] = Field(default_factory=list)
+    exporter_name: str = ""
+    importer_name: str = ""
+    product_description: str = ""
+    fob_value_usd: float = 0
+    quantity_kg: float = 0
+    destination_country: str = "CN"
+
+
+class CertDocGenerateResult(BaseModel):
+    document_type: str
+    content: str
+    format: str
+    generated_at: str
+    usage_note: str
+
+
+# ─── Supplier ────────────────────────────────────────────────────────────────────
+
+class SupplierListItem(BaseModel):
+    id: int
+    name_zh: str
+    country: str
+    region: Optional[str]
+    main_products: list[str]
+    main_hs_codes: list[str]
+    export_years: int
+    verified_chamber: bool
+    rating_avg: float
+    review_count: int
+    status: str
+    min_order_kg: Optional[float]
+
+
+class SupplierSearchResult(BaseModel):
+    suppliers: list[SupplierListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class SupplierReviewCreate(BaseModel):
+    supplier_id: int
+    quality_score: float = Field(..., ge=1, le=5)
+    delivery_score: float = Field(..., ge=1, le=5)
+    communication_score: float = Field(..., ge=1, le=5)
+    comment: str = ""
+    is_verified_deal: bool = False

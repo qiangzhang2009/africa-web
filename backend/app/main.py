@@ -15,6 +15,9 @@ from app.routers.auth import router as auth_router
 from app.routers.subscription import router as subscription_router
 from app.routers.api_keys import router as api_keys_router
 from app.routers.admin import router as admin_router
+from app.routers.freight import router as freight_router
+from app.routers.certificate import router as certificate_router
+from app.routers.suppliers import router as suppliers_router
 
 load_dotenv()
 
@@ -85,6 +88,9 @@ app.include_router(auth_router, prefix="/api/v1", tags=["用户认证"])
 app.include_router(subscription_router, prefix="/api/v1", tags=["订阅管理"])
 app.include_router(api_keys_router, prefix="/api/v1", tags=["API密钥管理"])
 app.include_router(admin_router, prefix="/api/v1", tags=["管理后台"])
+app.include_router(freight_router, prefix="/api/v1", tags=["物流成本估算"])
+app.include_router(certificate_router, prefix="/api/v1", tags=["原产地证书办理"])
+app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
 
 
 @app.get("/health")

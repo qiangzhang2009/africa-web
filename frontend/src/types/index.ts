@@ -312,3 +312,199 @@ export interface PaymentOrder {
   qr_code_url?: string
   status: 'pending' | 'paid' | 'expired'
 }
+
+// ─── Freight ─────────────────────────────────────────────────────────────────
+
+export interface FreightRoute {
+  id: number
+  origin_country: string
+  origin_port: string
+  origin_port_zh: string
+  dest_country: string
+  dest_port: string
+  dest_port_zh: string
+  transport_type: string
+  cost_min_usd: number
+  cost_max_usd: number
+  transit_days_min: number
+  transit_days_max: number
+  notes?: string
+}
+
+export interface FreightEstimateInput {
+  origin_country: string
+  dest_port: string
+  quantity_kg: number
+  transport_type?: string
+}
+
+export interface FreightEstimateResult {
+  origin_country: string
+  origin_port: string
+  origin_port_zh: string
+  dest_port: string
+  dest_port_zh: string
+  transport_type: string
+  quantity_kg: number
+  container_suggestion: string
+  sea_freight_usd: number
+  sea_freight_cny: number
+  port_charges_usd: number
+  insurance_usd: number
+  clearance_agent_fee_cny: number
+  domestic_logistics_cny: number
+  total_freight_cny: number
+  total_freight_usd: number
+  transit_days: string
+  notes?: string
+  breakdown: Record<string, unknown>
+}
+
+// ─── Certificate ───────────────────────────────────────────────────────────────
+
+export interface CertGuide {
+  id: number
+  country_code: string
+  country_name_zh: string
+  cert_type: string
+  cert_type_zh: string
+  issuing_authority: string
+  issuing_authority_zh: string
+  website_url?: string
+  fee_usd_min: number
+  fee_usd_max: number
+  fee_cny_note?: string
+  days_min: number
+  days_max: number
+  doc_requirements: string[]
+  step_sequence: string[]
+  api_available: boolean
+  notes?: string
+}
+
+export interface CertStepsResponse {
+  country_code: string
+  country_name_zh: string
+  cert_type_zh: string
+  issuing_authority_zh: string
+  fee_usd_min: number
+  fee_usd_max: number
+  fee_cny_note?: string
+  days_min: number
+  days_max: number
+  steps: Array<{ step: number; title: string; description: string }>
+  documents_required: string[]
+  notes?: string
+  website_url?: string
+}
+
+export interface CertDocGenerateInput {
+  hs_code: string
+  origin_country: string
+  processing_steps: string[]
+  material_sources: string[]
+  exporter_name?: string
+  importer_name?: string
+  product_description?: string
+  fob_value_usd?: number
+  quantity_kg?: number
+  destination_country?: string
+}
+
+export interface CertDocGenerateResult {
+  document_type: string
+  content: string
+  format: string
+  generated_at: string
+  usage_note: string
+}
+
+// ─── Supplier ──────────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: number
+  name_zh: string
+  name_en?: string
+  country: string
+  country_name_zh?: string
+  region?: string
+  main_products: string[]
+  main_hs_codes: string[]
+  contact_email?: string
+  contact_phone?: string
+  website?: string
+  min_order_kg?: number
+  payment_terms?: string
+  export_years: number
+  annual_export_tons?: number
+  verified_chamber: boolean
+  verified_实地拜访: boolean
+  verified_sgs: boolean
+  rating_avg: number
+  review_count: number
+  status: string
+  intro?: string
+  certifications: string[]
+}
+
+export interface SupplierListItem {
+  id: number
+  name_zh: string
+  country: string
+  region?: string
+  main_products: string[]
+  main_hs_codes: string[]
+  export_years: number
+  verified_chamber: boolean
+  rating_avg: number
+  review_count: number
+  status: string
+  min_order_kg?: number
+}
+
+export interface SupplierSearchResult {
+  suppliers: SupplierListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface SupplierReview {
+  id: number
+  supplier_id: number
+  user_email?: string
+  quality_score: number
+  delivery_score: number
+  communication_score: number
+  comment?: string
+  is_verified_deal: boolean
+  created_at?: string
+}
+
+export interface SupplierReviewCreate {
+  supplier_id: number
+  quality_score: number
+  delivery_score: number
+  communication_score: number
+  comment?: string
+  is_verified_deal?: boolean
+}
+
+export interface SupplierCompareResult {
+  supplier: Supplier
+  recommended_route: {
+    origin_port: string
+    origin_port_zh: string
+    dest_port: string
+    dest_port_zh: string
+    transit_days: string
+    cost_range_usd: string
+  } | null
+  estimated_freight: {
+    sea_freight_usd: number
+    sea_freight_cny: number
+    insurance_usd: number
+    clearance_cny: number
+    total_estimate_cny: number
+  } | null
+}

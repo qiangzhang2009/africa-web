@@ -7,9 +7,10 @@ const navLinks = [
   { to: '/calculator', label: '关税计算器' },
   { to: '/cost-calculator', label: '成本精算' },
   { to: '/products', label: '选品清单' },
+  { to: '/suppliers', label: '找供应商' },
+  { to: '/freight', label: '物流估算' },
   { to: '/origin-check', label: '原产地自测' },
-  { to: '/policy', label: '政策规则' },
-  { to: '/getting-started', label: '新手入门' },
+  { to: '/certificate', label: '证书办理' },
 ]
 
 export default function Layout() {
@@ -196,8 +197,10 @@ export default function Layout() {
                 <li><Link to="/calculator" className="hover:text-white">关税计算器</Link></li>
                 <li><Link to="/cost-calculator" className="hover:text-white">成本精算</Link></li>
                 <li><Link to="/products" className="hover:text-white">选品清单</Link></li>
+                <li><Link to="/suppliers" className="hover:text-white">找供应商</Link></li>
+                <li><Link to="/freight" className="hover:text-white">物流估算</Link></li>
                 <li><Link to="/origin-check" className="hover:text-white">原产地自测</Link></li>
-                <li><Link to="/getting-started" className="hover:text-white">新手入门</Link></li>
+                <li><Link to="/certificate" className="hover:text-white">证书办理</Link></li>
               </ul>
             </div>
 
