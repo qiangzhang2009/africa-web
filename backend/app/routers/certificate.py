@@ -14,6 +14,66 @@ from app.routers.auth import get_current_user, get_optional_user
 router = APIRouter()
 DB_PATH = get_db_path()
 
+# ─── Fallback data (used when DB data is empty/corrupted) ─────────────────────
+CERT_GUIDES_FALLBACK = {
+    "ET": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "原产地声明", "生产工艺说明"],
+        "step_sequence": ["联系供应商准备文件", "向ECCSA提交申请", "支付证书费", "领取证书", "快递至中国进口商"],
+    },
+    "KE": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明", "货物描述"],
+        "step_sequence": ["准备商业发票", "联系KNCCI当地分会", "提交申请", "审核通过后缴费", "取证"],
+    },
+    "TZ": {
+        "doc_requirements": ["申请表", "发票", "出口商声明", "货物明细表"],
+        "step_sequence": ["出口商向TCCIA提交", "审核货物原产资格", "缴纳费用", "签发证书"],
+    },
+    "GH": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明", "产品质量证书"],
+        "step_sequence": ["出口商注册", "向GEPA提交原产证申请", "审核", "缴费取证", "快递"],
+    },
+    "ZA": {
+        "doc_requirements": ["申请表", "商业发票", "装箱单", "出口商声明", "原产地证书表格"],
+        "step_sequence": ["向Sacci提交", "审核文件", "缴费", "取证或电子签发"],
+    },
+    "EG": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明", "产品质量证明"],
+        "step_sequence": ["出口商向当地商会申请", "提交完整文件", "审核", "缴费", "领取证书"],
+    },
+    "CI": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明", "加工工序说明"],
+        "step_sequence": ["联系CGECI", "提交申请文件", "审核", "缴费", "取证"],
+    },
+    "NG": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "Nexus卡片", "出口商声明"],
+        "step_sequence": ["出口商NEXUS注册", "向NACCIMA申请", "提交全部文件", "审核", "取证"],
+    },
+    "MG": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明"],
+        "step_sequence": ["向FTM提交", "审核", "缴费", "取证"],
+    },
+    "UG": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明"],
+        "step_sequence": ["联系UCCI", "提交文件", "审核", "缴费取证"],
+    },
+    "RW": {
+        "doc_requirements": ["申请表", "发票", "出口商声明", "货物说明"],
+        "step_sequence": ["向PSF提交", "审核", "缴费", "取证"],
+    },
+    "MU": {
+        "doc_requirements": ["申请表", "发票", "装箱单", "出口商声明"],
+        "step_sequence": ["向MCCI提交", "审核", "缴费", "取证", "快递"],
+    },
+}
+
+
+def _get_fallback_for(country_code: str) -> dict:
+    """Return fallback doc_requirements and step_sequence for a country."""
+    cc = country_code.upper()
+    if cc in CERT_GUIDES_FALLBACK:
+        return CERT_GUIDES_FALLBACK[cc]
+    return {"doc_requirements": [], "step_sequence": []}
+
 
 # ─── Schemas ────────────────────────────────────────────────────────────────────
 
@@ -126,7 +186,7 @@ async def list_cert_guides(
     rows = cursor.fetchall()
     conn.close()
 
-    return [
+    result = [
         {
             "id": r["id"],
             "country_code": r["country_code"],
@@ -141,8 +201,8 @@ async def list_cert_guides(
             "fee_cny_note": r["fee_cny_note"],
             "days_min": r["days_min"],
             "days_max": r["days_max"],
-            "doc_requirements": _parse_json_field(r["doc_requirements"], []),
-            "step_sequence": _parse_json_field(r["step_sequence"], []),
+            "doc_requirements": _parse_json_field(r["doc_requirements"]) or _get_fallback_for(r["country_code"])["doc_requirements"],
+            "step_sequence": _parse_json_field(r["step_sequence"]) or _get_fallback_for(r["country_code"])["step_sequence"],
             "api_available": bool(r["api_available"]),
             "notes": r["notes"],
         }
@@ -167,6 +227,11 @@ async def get_cert_guide(country_code: str):
     if not row:
         raise HTTPException(status_code=404, detail=f"暂无 {country_code} 的办证指南")
 
+    # Use fallback if DB data is empty/corrupted
+    fallback = _get_fallback_for(country_code.upper())
+    docs = _parse_json_field(row["doc_requirements"]) or fallback["doc_requirements"]
+    steps = _parse_json_field(row["step_sequence"]) or fallback["step_sequence"]
+
     return CertGuide(
         id=row["id"],
         country_code=row["country_code"],
@@ -181,8 +246,8 @@ async def get_cert_guide(country_code: str):
         fee_cny_note=row["fee_cny_note"],
         days_min=row["days_min"],
         days_max=row["days_max"],
-        doc_requirements=_parse_json_field(row["doc_requirements"], []),
-        step_sequence=_parse_json_field(row["step_sequence"], []),
+        doc_requirements=docs,
+        step_sequence=steps,
         api_available=bool(row["api_available"]),
         notes=row["notes"],
     )
@@ -429,8 +494,10 @@ async def get_cert_steps(country_code: str):
     if not row:
         raise HTTPException(status_code=404, detail="暂无该国家的办证指南")
 
-    steps_raw = _parse_json_field(row["step_sequence"], [])
-    docs_raw = _parse_json_field(row["doc_requirements"], [])
+    # Use fallback if DB data is empty
+    fallback = _get_fallback_for(country_code.upper())
+    steps_raw = _parse_json_field(row["step_sequence"]) or fallback["step_sequence"]
+    docs_raw = _parse_json_field(row["doc_requirements"]) or fallback["doc_requirements"]
 
     # Parse step sequence into structured steps
     steps = []
