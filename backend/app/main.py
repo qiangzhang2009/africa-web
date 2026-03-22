@@ -36,8 +36,9 @@ DB_PATH = _get_db_path()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Bootstrap: ensure DB schema and seed data exist on startup."""
-    from app.models.database import init_db
+    from app.models.database import init_db, seed_admin_user
     init_db(str(DB_PATH))
+    seed_admin_user(str(DB_PATH))
     yield
 
 

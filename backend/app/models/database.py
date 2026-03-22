@@ -349,6 +349,10 @@ HS_CODES_SEED = [
 
 # ─── Init ─────────────────────────────────────────────────────────────────────
 
+SEED_ADMIN_EMAIL = "admin@africa-zero.com"
+SEED_ADMIN_PASSWORD = "AfricaZero2026Admin!"
+
+
 def init_db(db_path: str) -> None:
     """Create tables and seed data if empty. Handles existing DB upgrades."""
     conn = get_db(db_path)
@@ -401,3 +405,24 @@ def init_db(db_path: str) -> None:
 
     conn.commit()
     conn.close()
+
+
+# ─── Admin seed ─────────────────────────────────────────────────────────────────
+def seed_admin_user(db_path: str) -> None:
+    """Create seed admin user if not exists."""
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = ?", (SEED_ADMIN_EMAIL,))
+    if cursor.fetchone():
+        conn.close()
+        return
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        """INSERT INTO users (email, password_hash, tier, is_admin, is_active, subscribed_at, expires_at)
+           VALUES (?, ?, 'free', 1, 1, ?, NULL)""",
+        (SEED_ADMIN_EMAIL, hash_password(SEED_ADMIN_PASSWORD), now)
+    )
+    conn.commit()
+    conn.close()
+    print(f"[AfricaZero] Admin seed user created: {SEED_ADMIN_EMAIL} / {SEED_ADMIN_PASSWORD}")
+
