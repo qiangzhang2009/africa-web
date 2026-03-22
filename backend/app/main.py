@@ -2,9 +2,7 @@
 AfricaZero — FastAPI Backend
 Main entry point. Routes are mounted in app/routers/.
 """
-import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -20,25 +18,13 @@ from app.routers.admin import router as admin_router
 
 load_dotenv()
 
-# ─── Database initialization ─────────────────────────────────────────────────
-def _get_db_path() -> Path:
-    raw = os.getenv("DATABASE_URL", "data/africa_zero.db")
-    path = Path(raw)
-    # If path is relative, resolve from where uvicorn is started (cwd)
-    if not path.is_absolute():
-        path = Path.cwd() / path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
-
-DB_PATH = _get_db_path()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Bootstrap: ensure DB schema and seed data exist on startup."""
-    from app.models.database import init_db, seed_admin_user
-    init_db(str(DB_PATH))
-    seed_admin_user(str(DB_PATH))
+    from app.models.database import get_db_path, init_db, seed_admin_user
+    db_path = get_db_path()
+    init_db(db_path)
+    seed_admin_user(db_path)
     yield
 
 

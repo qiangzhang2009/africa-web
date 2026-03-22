@@ -1,12 +1,9 @@
 from fastapi import APIRouter, Query
-from app.models.database import get_db
+from app.models.database import get_db, get_db_path
 from app.schemas import Country
 from typing import Optional
-import os
-from pathlib import Path
 
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
+DB_PATH = get_db_path()
 
 router = APIRouter()
 

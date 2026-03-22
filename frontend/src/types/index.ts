@@ -173,6 +173,8 @@ export interface AuthResponse {
   access_token: string
   token_type?: string
   user: UserResponse
+  remaining_today?: number
+  max_free_daily?: number
 }
 
 export interface LoginRequest {

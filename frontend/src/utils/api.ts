@@ -74,6 +74,11 @@ export async function getMe() {
   return data
 }
 
+export async function getDailyUsage(): Promise<{ remaining_today: number; used_today: number; max_free_daily: number; tier: string }> {
+  const { data } = await api.get('/auth/daily-usage')
+  return data
+}
+
 // ─── Tariff ───────────────────────────────────────────────────────────────────
 export async function calculateTariff(input: TariffCalcInput): Promise<TariffCalcResult> {
   const { data } = await api.post<TariffCalcResult>('/calculate/tariff', input)

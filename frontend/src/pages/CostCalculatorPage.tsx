@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { calculateImportCost } from '../utils/api'
+import { calculateImportCost, getDailyUsage } from '../utils/api'
 import { track } from '../utils/track'
+import { useAppStore } from '../hooks/useAppStore'
 import type { ImportCostResult } from '../types'
 
 function fmt(n: number) {
@@ -56,6 +57,7 @@ type PresetItem = {
 }
 
 export default function CostCalculatorPage() {
+  const { tier, remainingToday, syncRemainingFromServer, decrementFreeQuery } = useAppStore()
   const [searchParams] = useSearchParams()
 
   const [productName, setProductName] = useState('')
@@ -66,12 +68,23 @@ export default function CostCalculatorPage() {
   const [result, setResult] = useState<ImportCostResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string>('🥉 入门级（小额试水 <¥5万）')
+  const isPro = tier !== 'free'
 
   // Refs 同步最新值，避免快速点击时的竞态条件
   const productNameRef = useRef('')
   const quantityKgRef = useRef('')
   const fobPerKgRef = useRef('')
   const originRef = useRef('ET')
+
+  useEffect(() => {
+    getDailyUsage()
+      .then(d => {
+        if (d.remaining_today !== undefined) {
+          syncRemainingFromServer(d.remaining_today)
+        }
+      })
+      .catch(() => { /* silent */ })
+  }, [])
 
   // Auto-fill from URL params (passed from product detail page)
   useEffect(() => {
@@ -98,6 +111,7 @@ export default function CostCalculatorPage() {
   }
 
   async function handleCalc() {
+    const isProUser = tier !== 'free'
     // 使用 ref 获取最新值（同步），避免 React 状态延迟导致的竞态条件
     const currentProductName = productNameRef.current
     const currentQuantityKg = quantityKgRef.current
@@ -106,6 +120,11 @@ export default function CostCalculatorPage() {
     if (!currentProductName || !currentQuantityKg || !currentFobPerKg) {
       setError('请填写所有必填项，或从下方选择一个品类')
       track.calcError('cost_calc_missing_fields')
+      return
+    }
+    if (!isProUser && remainingToday <= 0) {
+      setError('今日免费次数已用完，请开通 Pro 版')
+      track.calcError('quota_exceeded')
       return
     }
     setLoading(true)
@@ -123,6 +142,7 @@ export default function CostCalculatorPage() {
       track.costSubmit(input, data.success)
       if (data.success) {
         track.costResultShown(data as unknown as Record<string, unknown>)
+        if (!isProUser) decrementFreeQuery()
       } else {
         track.calcError(`cost_calc_failed: ${data.message}`)
       }
@@ -142,6 +162,12 @@ export default function CostCalculatorPage() {
         <p className="text-slate-600">
           输入采购信息，一键获取完整到岸成本、回本测算与原产地证书指南。
         </p>
+        {!isPro && (
+          <div className="mt-3 inline-flex items-center gap-2 text-sm bg-amber-50 text-amber-700 px-3 py-1.5 rounded-lg">
+            <span>今日剩余免费次数：<strong>{remainingToday}</strong> / 3</span>
+            <Link to="/pricing" className="underline hover:no-underline">升级 Pro</Link>
+          </div>
+        )}
       </div>
 
       {/* 选品清单关联提示 */}
@@ -299,7 +325,7 @@ export default function CostCalculatorPage() {
         <div className="flex flex-wrap gap-3 mt-6">
           <button
             onClick={handleCalc}
-            disabled={loading}
+            disabled={loading || (!isPro && remainingToday <= 0)}
             className="px-8 py-3 bg-primary-500 hover:bg-primary-600 disabled:bg-slate-300 text-white font-semibold rounded-xl transition-colors"
           >
             {loading ? '计算中...' : '精算成本'}

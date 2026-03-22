@@ -2,18 +2,13 @@
 Admin router — user management, subscription activation, analytics.
 Only accessible by is_admin=True users.
 """
-import os
 from datetime import datetime, timedelta
-from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
-from app.models.database import get_db, hash_password
+from app.models.database import get_db, get_db_path
 from app.schemas import UserResponse, SubscriptionResponse
 from app.routers.auth import get_current_user
-
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
 
 router = APIRouter()
 

@@ -1,19 +1,16 @@
 """
 Subscription management router.
 """
-import os
 from datetime import datetime, timedelta
-from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
-from app.models.database import get_db
+from app.models.database import get_db, get_db_path
 from app.schemas import (
     SubscriptionCreate, SubscriptionResponse, SubscriptionStatus,
     UserResponse,
 )
 from app.routers.auth import get_current_user
 
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
+DB_PATH = get_db_path()
 
 router = APIRouter()
 

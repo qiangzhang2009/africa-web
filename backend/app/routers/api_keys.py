@@ -1,18 +1,15 @@
 """
 API Key management router (enterprise tier).
 """
-import os
 from datetime import datetime
-from pathlib import Path
 import hashlib
 
 from fastapi import APIRouter, HTTPException, Depends, Request
-from app.models.database import get_db, generate_api_key, mask_api_key
+from app.models.database import get_db, generate_api_key, mask_api_key, get_db_path
 from app.schemas import ApiKeyCreate, ApiKeyResponse, ApiKeyWithPlain
 from app.routers.auth import get_current_user
 
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
+DB_PATH = get_db_path()
 
 router = APIRouter()
 

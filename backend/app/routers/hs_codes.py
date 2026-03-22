@@ -1,9 +1,7 @@
 from fastapi import APIRouter, Query
-from app.models.database import get_db
+from app.models.database import get_db, get_db_path
 from app.schemas import HSSearchResult
 from typing import Optional
-import os
-from pathlib import Path
 
 # HS编码零关税状态映射：品名关键词 → (是否零关税, 说明文字)
 ZERO_TARIFF_MAP = {
@@ -37,8 +35,7 @@ NON_ZERO_GUIDANCE = {
     "塑料": "注意：初级塑料(39章)部分品类可享零关税，上表已标注MFN税率，请以实际查询结果为准。",
 }
 
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
+DB_PATH = get_db_path()
 
 router = APIRouter()
 

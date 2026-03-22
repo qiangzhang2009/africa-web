@@ -1,25 +1,104 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Depends
 from app.schemas import (
     TariffCalcInput, TariffCalcResult,
     ImportCostInput, ImportCostResult,
     OriginCheckInput, OriginCheckResult,
 )
-from pathlib import Path
 import os, json
+from datetime import datetime
 from openai import OpenAI
 from app.services import tariff as tariff_service
-from app.models.database import get_db
+from app.models.database import get_db, get_db_path
+from app.routers.auth import get_optional_user, get_user_daily_usage
 
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
+DB_PATH = get_db_path()
+FREE_DAILY_LIMIT = 3
 
 router = APIRouter()
 
 
 # ─── POST /calculate/tariff ─────────────────────────────────────────────────
 
+def _ensure_calc_table(db_path: str) -> None:
+    """Self-healing: create calculations table if it doesn't exist yet."""
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS calculations (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER,
+            product_name    TEXT,
+            hs_code         TEXT,
+            origin          TEXT,
+            destination     TEXT,
+            fob_value       REAL,
+            result_json     TEXT,
+            total           REAL,
+            created_at      TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_calc_day ON calculations(created_at)")
+    conn.commit()
+    conn.close()
+
+
+def _check_and_record_calculation(user_id: int | None, db_path: str) -> tuple[bool, int, int]:
+    """
+    Check if a free user has remaining daily quota.
+    Returns (allowed, used_today, remaining).
+    For non-free users or anonymous users, always allowed.
+    """
+    if user_id is None:
+        return True, 0, 999999
+
+    # Get user tier from DB
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT tier, expires_at FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return True, 0, 999999
+
+    tier = row["tier"]
+    expires_at = row["expires_at"]
+    now = datetime.now().strftime("%Y-%m-%d")
+
+    # Downgrade expired subscriptions
+    if tier != "free" and expires_at and expires_at < now:
+        tier = "free"
+
+    if tier != "free":
+        return True, 0, 999999
+
+    # Free user: check daily quota
+    used_today = get_user_daily_usage(user_id, db_path)
+    remaining = FREE_DAILY_LIMIT - used_today
+    return remaining > 0, used_today, max(0, remaining)
+
+
 @router.post("/calculate/tariff", response_model=TariffCalcResult)
-async def calc_tariff(input: TariffCalcInput):
+async def calc_tariff(input: TariffCalcInput, current_user: dict = Depends(get_optional_user)):
+    user_id = current_user["user_id"] if current_user else None
+
+    # Self-healing: ensure calculations table exists
+    _ensure_calc_table(DB_PATH)
+
+    # Server-side rate limit check
+    allowed, used_today, remaining = _check_and_record_calculation(user_id, DB_PATH)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "quota_exceeded",
+                "message": "今日免费次数已用完，请开通 Pro 版",
+                "remaining_today": 0,
+                "max_free_daily": FREE_DAILY_LIMIT,
+            }
+        )
+
     result = tariff_service.calculate_tariff(
         hs_code=input.hs_code,
         origin_country=input.origin_country,
@@ -31,13 +110,61 @@ async def calc_tariff(input: TariffCalcInput):
         exchange_rate=input.exchange_rate,
     )
     result["input"] = input.model_dump()
+
+    # Record successful calculation for quota tracking
+    if user_id and result.get("success"):
+        conn = get_db(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+            (user_id, input.hs_code, input.hs_code, input.origin_country, input.destination, input.fob_value, json.dumps(result))
+        )
+        conn.commit()
+        conn.close()
+
     return result
+
+
+# ─── GET /calculate/daily-usage ───────────────────────────────────────────────
+
+@router.get("/calculate/daily-usage")
+async def get_calc_daily_usage(current_user: dict = Depends(get_optional_user)):
+    """Return remaining daily quota for the current user."""
+    _ensure_calc_table(DB_PATH)
+    if not current_user:
+        return {"remaining_today": 999999, "max_free_daily": FREE_DAILY_LIMIT, "tier": "anonymous"}
+
+    allowed, used_today, remaining = _check_and_record_calculation(current_user["user_id"], DB_PATH)
+    return {
+        "remaining_today": remaining,
+        "used_today": used_today,
+        "max_free_daily": FREE_DAILY_LIMIT,
+        "tier": current_user["tier"],
+    }
 
 
 # ─── POST /calculate/import-cost ─────────────────────────────────────────────
 
 @router.post("/calculate/import-cost", response_model=ImportCostResult)
-async def calc_import_cost(input: ImportCostInput):
+async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(get_optional_user)):
+    user_id = current_user["user_id"] if current_user else None
+
+    # Self-healing: ensure calculations table exists
+    _ensure_calc_table(DB_PATH)
+
+    # Apply same rate limit
+    allowed, _, _ = _check_and_record_calculation(user_id, DB_PATH)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "quota_exceeded",
+                "message": "今日免费次数已用完，请开通 Pro 版",
+                "remaining_today": 0,
+                "max_free_daily": FREE_DAILY_LIMIT,
+            }
+        )
+
     result = tariff_service.calculate_import_cost(
         product_name=input.product_name,
         quantity_kg=input.quantity_kg,

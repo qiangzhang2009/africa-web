@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await login({ email, password })
-      setAuth(res.access_token, res.user)
+      setAuth(res.access_token, res.user, res.remaining_today)
       navigate('/account')
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {

@@ -3,6 +3,7 @@ Database models using SQLite + Peewee ORM.
 Schema: africa_countries, hs_codes, policy_rules, users, calculations,
         subscriptions, api_keys, sub_accounts, usage_logs
 """
+import os
 import sqlite3
 import json
 import hashlib
@@ -42,6 +43,20 @@ def get_db(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def get_db_path() -> str:
+    """
+    Returns the canonical DB path used by all modules.
+    Resolves DATABASE_URL env var consistently regardless of where it is called.
+    Creates the parent directory if needed.
+    """
+    raw = os.getenv("DATABASE_URL", "data/africa_zero.db")
+    path = Path(raw)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return str(path.resolve())
 
 
 # ─── Schema ──────────────────────────────────────────────────────────────────

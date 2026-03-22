@@ -3,13 +3,12 @@ Authentication router: register, login, JWT token management.
 """
 import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 
-from app.models.database import get_db, hash_password, verify_password
+from app.models.database import get_db, hash_password, verify_password, get_db_path
 from app.schemas import (
     UserRegister, UserLogin, UserResponse,
     AuthResponse, SubAccountCreate, SubAccountResponse,
@@ -18,6 +17,7 @@ from app.schemas import (
 ALGORITHM = "HS256"
 SECRET_KEY = os.getenv("JWT_SECRET", "africa-zero-secret-key-change-in-production-2026")
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+FREE_DAILY_LIMIT = 3
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
@@ -50,6 +50,56 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         raise HTTPException(status_code=401, detail="Token无效或已过期")
 
 
+def get_user_daily_usage(user_id: int, db_path: str) -> int:
+    """Return how many tariff calculations this user has done today."""
+    # Self-healing: create table if it doesn't exist yet (safe even if already exists)
+    _ensure_calc_table = get_db(db_path)
+    _cur = _ensure_calc_table.cursor()
+    _cur.execute("""
+        CREATE TABLE IF NOT EXISTS calculations (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         INTEGER,
+            product_name    TEXT,
+            hs_code         TEXT,
+            origin          TEXT,
+            destination     TEXT,
+            fob_value       REAL,
+            result_json     TEXT,
+            total           REAL,
+            created_at      TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    _cur.execute("CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id)")
+    _cur.execute("CREATE INDEX IF NOT EXISTS idx_calc_day ON calculations(created_at)")
+    _ensure_calc_table.commit()
+    _ensure_calc_table.close()
+
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = DATE('now')",
+            (user_id,)
+        )
+        cnt = cursor.fetchone()["cnt"]
+    except Exception:
+        cnt = 0
+    conn.close()
+    return cnt
+
+
+def get_user_tier_from_db(user_id: int, db_path: str) -> tuple[str, str | None, bool, bool]:
+    """Return (tier, expires_at, is_admin, is_active) from the database."""
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return "free", None, False, False
+    return row["tier"], row["expires_at"], bool(row["is_admin"]), bool(row["is_active"])
+
+
 def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Returns user info if token provided, else None."""
     if not credentials:
@@ -66,8 +116,7 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
         return None
 
 
-DB_PATH = os.getenv("DATABASE_URL", "data/africa_zero.db")
-DB_PATH = str(Path(DB_PATH).resolve())
+DB_PATH = get_db_path()
 
 
 @router.post("/auth/register", response_model=AuthResponse)
@@ -93,6 +142,7 @@ async def register(body: UserRegister):
     conn.close()
 
     token = create_access_token(user_id, body.email.lower().strip(), "free", False)
+    used_today = 0
     user = UserResponse(
         id=user_id,
         email=body.email.lower().strip(),
@@ -102,7 +152,7 @@ async def register(body: UserRegister):
         expires_at=None,
         created_at=now,
     )
-    return AuthResponse(access_token=token, user=user)
+    return AuthResponse(access_token=token, user=user, remaining_today=FREE_DAILY_LIMIT - used_today, max_free_daily=FREE_DAILY_LIMIT)
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -124,11 +174,11 @@ async def login(body: UserLogin):
         raise HTTPException(status_code=401, detail="邮箱或密码错误")
 
     # Check subscription expiry
-    now = datetime.now().strftime("%Y-%m-%d")
+    now_str = datetime.now().strftime("%Y-%m-%d")
     tier = row["tier"]
     expires_at = row["expires_at"]
 
-    if expires_at and expires_at < now:
+    if expires_at and expires_at < now_str:
         tier = "free"
         conn2 = get_db(DB_PATH)
         cursor2 = conn2.cursor()
@@ -137,6 +187,8 @@ async def login(body: UserLogin):
         )
         conn2.commit()
         conn2.close()
+
+    used_today = get_user_daily_usage(row["id"], DB_PATH)
 
     token = create_access_token(
         row["id"],
@@ -153,7 +205,7 @@ async def login(body: UserLogin):
         expires_at=expires_at,
         created_at=row["created_at"],
     )
-    return AuthResponse(access_token=token, user=user)
+    return AuthResponse(access_token=token, user=user, remaining_today=max(0, FREE_DAILY_LIMIT - used_today), max_free_daily=FREE_DAILY_LIMIT)
 
 
 @router.get("/auth/me", response_model=UserResponse)
@@ -183,6 +235,17 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         expires_at=expires_at,
         created_at=row["created_at"],
     )
+
+
+@router.get("/auth/daily-usage")
+async def get_daily_usage(current_user: dict = Depends(get_current_user)):
+    """Return the user's remaining free daily queries and tier info, synced from the server."""
+    used_today = get_user_daily_usage(current_user["user_id"], DB_PATH)
+    return {
+        "used_today": used_today,
+        "remaining_today": max(0, FREE_DAILY_LIMIT - used_today),
+        "max_free_daily": FREE_DAILY_LIMIT,
+    }
 
 
 # ─── Sub-accounts (Enterprise) ─────────────────────────────────────────────────

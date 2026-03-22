@@ -33,6 +33,8 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    remaining_today: int = 3
+    max_free_daily: int = 3
 
 
 # ─── Sub-accounts ─────────────────────────────────────────────────────────────

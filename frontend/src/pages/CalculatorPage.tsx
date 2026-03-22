@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '../hooks/useAppStore'
-import { calculateTariff, searchHSCodes } from '../utils/api'
+import { calculateTariff, searchHSCodes, getDailyUsage } from '../utils/api'
 import { track } from '../utils/track'
 import type { TariffCalcResult, DestinationMarket, HSSearchResult } from '../types'
 
@@ -127,10 +127,20 @@ function fmt(n: number, currency = 'CNY') {
 }
 
 export default function CalculatorPage() {
-  const { tier, remainingToday, decrementFreeQuery, syncCounter } = useAppStore()
+  const { tier, remainingToday, decrementFreeQuery, syncCounter, syncRemainingFromServer } = useAppStore()
   const [searchParams] = useSearchParams()
 
-  useEffect(() => { syncCounter() }, [])
+  useEffect(() => {
+    syncCounter()
+    // Sync remainingToday from server (authoritative source)
+    getDailyUsage()
+      .then(d => {
+        if (d.remaining_today !== undefined) {
+          syncRemainingFromServer(d.remaining_today)
+        }
+      })
+      .catch(() => { /* silent — use local state as fallback */ })
+  }, [])
 
   // Auto-fill from URL params (passed from product detail or other pages)
   useEffect(() => {
@@ -310,8 +320,14 @@ export default function CalculatorPage() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'network_error'
-      setError('计算失败，请检查网络后重试')
-      track.calcError(msg)
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 429) {
+        setError('今日免费次数已用完，请开通 Pro 版')
+        track.calcError('quota_exceeded')
+      } else {
+        setError('计算失败，请检查网络后重试')
+        track.calcError(msg)
+      }
     } finally {
       setLoading(false)
     }

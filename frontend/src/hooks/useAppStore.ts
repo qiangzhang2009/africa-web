@@ -60,8 +60,9 @@ interface AppState {
   setTier: (tier: SubscriptionTier) => void
   setSubscription: (tier: SubscriptionTier, expiresAt?: string) => void
   syncCounter: () => void
+  syncRemainingFromServer: (remaining: number) => void
   updateUser: (user: UserResponse) => void
-  setAuth: (token: string, user: UserResponse) => void
+  setAuth: (token: string, user: UserResponse, remainingToday?: number) => void
   logout: () => void
 }
 
@@ -117,12 +118,13 @@ export const useAppStore = create<AppState>()(
         tier: user.tier,
       }),
 
-      setAuth: (token, user) => {
+      setAuth: (token, user, remainingToday?: number) => {
         _setToken(token)
         set({
           currentUser: user,
           isLoggedIn: true,
           tier: user.tier,
+          remainingToday: remainingToday ?? FREE_DAILY_LIMIT,
         })
       },
 
@@ -139,6 +141,17 @@ export const useAppStore = create<AppState>()(
           set({ remainingToday: fresh.remaining, dailyFreeQueries: fresh.totalUsed, counter: fresh })
         }
       },
+
+      // Sync remainingToday from the server (authoritative source)
+      syncRemainingFromServer: (remaining: number) => {
+        const used = FREE_DAILY_LIMIT - remaining
+        const newCounter: DailyCounter = {
+          date: getTodayKey(),
+          remaining,
+          totalUsed: used,
+        }
+        set({ remainingToday: remaining, dailyFreeQueries: used, counter: newCounter })
+      },
     }),
     {
       name: 'africa-app-store',
@@ -146,6 +159,7 @@ export const useAppStore = create<AppState>()(
         tier: state.tier,
         counter: state.counter,
         dailyFreeQueries: state.dailyFreeQueries,
+        remainingToday: state.remainingToday,
         interestList: state.interestList,
         currentUser: state.currentUser,
         isLoggedIn: state.isLoggedIn,
