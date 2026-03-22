@@ -38,6 +38,8 @@ _allow_origins = [
     "https://africa.zxqconsulting.com",
     "https://global2china.zxqconsulting.com",
     "https://frontend-nrlqfber2-johnzhangs-projects-50e83ec4.vercel.app",
+    "https://africa-web-1.onrender.com",
+    "https://africa-zero-frontend.vercel.app",
     "http://localhost:5173",  # dev
     "http://localhost:8000",  # dev
 ]
