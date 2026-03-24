@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [tierFilter, setTierFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
+  const [adminError, setAdminError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoggedIn || !currentUser?.is_admin) {
@@ -39,6 +40,7 @@ export default function AdminPage() {
 
   async function loadData() {
     setLoading(true)
+    setAdminError(null)
     try {
       const [s, uData] = await Promise.all([
         adminGetStats().catch(() => null),
@@ -47,8 +49,14 @@ export default function AdminPage() {
       setStats(s)
       setUsers(uData.users)
       setTotal(uData.total)
-    } catch {
-      // silent
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        setAdminError('无权限访问，请重新登录')
+        setTimeout(() => navigate('/'), 1500)
+        return
+      }
+      setAdminError('加载失败，请刷新页面')
     } finally {
       setLoading(false)
     }
@@ -69,26 +77,53 @@ export default function AdminPage() {
       showMsg(`${TIER_LABELS[tier] || tier} 开通成功`)
       loadData()
     } catch (e: unknown) {
-      showMsg((e as { response?: { data?: { detail?: string } } })?.response?.data?.detail || '操作失败')
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        setAdminError('无权限，请重新登录')
+        setTimeout(() => navigate('/'), 1500)
+        return
+      }
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      showMsg(detail || '操作失败')
     }
   }
 
   async function handleToggleAdmin(user: AdminUserSummary) {
+    if (user.id === currentUser?.id) {
+      showMsg('不能修改自己的管理员权限')
+      return
+    }
     try {
       await adminUpdateUser(user.id, { is_admin: !user.is_admin })
       showMsg(`${user.email} 管理员权限已${!user.is_admin ? '授予' : '撤销'}`)
       loadData()
-    } catch {
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        setAdminError('无权限，请重新登录')
+        setTimeout(() => navigate('/'), 1500)
+        return
+      }
       showMsg('操作失败')
     }
   }
 
   async function handleToggleActive(user: AdminUserSummary) {
+    if (user.id === currentUser?.id) {
+      showMsg('不能禁用自己的账号')
+      return
+    }
     try {
       await adminUpdateUser(user.id, { is_active: !user.is_active })
       showMsg(`${user.email} 已${!user.is_active ? '启用' : '禁用'}`)
       loadData()
-    } catch {
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        setAdminError('无权限，请重新登录')
+        setTimeout(() => navigate('/'), 1500)
+        return
+      }
       showMsg('操作失败')
     }
   }
@@ -111,6 +146,12 @@ export default function AdminPage() {
       {msg && (
         <div className="mb-6 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
           {msg}
+        </div>
+      )}
+
+      {adminError && (
+        <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          {adminError}
         </div>
       )}
 

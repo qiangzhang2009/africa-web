@@ -49,6 +49,7 @@ export default function AccountPage() {
   const [newSubPass, setNewSubPass] = useState('')
   const [newSubName, setNewSubName] = useState('')
   const [actionMsg, setActionMsg] = useState('')
+  const [accountDisabled, setAccountDisabled] = useState(false)
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -60,9 +61,16 @@ export default function AccountPage() {
 
   async function loadData() {
     setLoading(true)
+    setAccountDisabled(false)
     try {
       const [st, hist, keys, subs] = await Promise.all([
-        getSubscriptionStatus().catch(() => null),
+        getSubscriptionStatus().catch((e: unknown) => {
+          const status = (e as { response?: { status?: number } })?.response?.status
+          if (status === 401 || status === 403) {
+            setAccountDisabled(true)
+          }
+          return null
+        }),
         getSubscriptionHistory().catch(() => []),
         listApiKeys().catch(() => []),
         listSubAccounts().catch(() => []),
@@ -103,7 +111,12 @@ export default function AccountPage() {
       await revokeApiKey(id)
       setApiKeys(prev => prev.filter(k => k.id !== id))
       showMsg('API Key 已吊销')
-    } catch {
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        showMsg('无权限，请重新登录')
+        return
+      }
       showMsg('吊销失败')
     }
   }
@@ -133,7 +146,12 @@ export default function AccountPage() {
       await deleteSubAccount(id)
       setSubAccounts(prev => prev.filter(s => s.id !== id))
       showMsg('子账号已删除')
-    } catch {
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        showMsg('无权限，请重新登录')
+        return
+      }
       showMsg('删除失败')
     }
   }
@@ -183,6 +201,19 @@ export default function AccountPage() {
       {actionMsg && (
         <div className="mb-6 px-4 py-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-sm">
           {actionMsg}
+        </div>
+      )}
+
+      {accountDisabled && (
+        <div className="mb-6 px-4 py-4 bg-red-50 border border-red-200 rounded-xl text-center">
+          <p className="text-red-700 font-medium">⚠️ 您的账号已被管理员禁用</p>
+          <p className="text-red-500 text-sm mt-1">如需恢复账号，请联系管理员：<a href="mailto:zxq@zxqconsulting.com" className="underline">zxq@zxqconsulting.com</a></p>
+          <button
+            onClick={() => { storeLogout(); navigate('/') }}
+            className="mt-3 px-4 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+          >
+            退出登录
+          </button>
         </div>
       )}
 

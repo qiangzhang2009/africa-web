@@ -25,7 +25,6 @@ import { getDailyUsage, getMe, getToken } from './utils/api'
 
 function TrackPageView() {
   const location = useLocation()
-  // 初始化追踪 SDK
   useTrackInit()
 
   useEffect(() => {
@@ -36,7 +35,7 @@ function TrackPageView() {
 }
 
 function AuthBootstrap() {
-  const { isLoggedIn, updateUser, syncRemainingFromServer } = useAppStore()
+  const { isLoggedIn, updateUser, syncRemainingFromServer, logout } = useAppStore()
 
   useEffect(() => {
     const token = getToken()
@@ -50,23 +49,27 @@ function AuthBootstrap() {
           getDailyUsage().catch(() => null),
         ])
         if (cancelled) return
-        // updateUser always succeeds even if getDailyUsage 401'd —
-        // a 401 from daily-usage just means the token is expired/invalid,
-        // but getMe succeeded so we have the authoritative user state.
         updateUser(user)
         if (usage && typeof usage.remaining_today === 'number') {
           syncRemainingFromServer(usage.remaining_today)
         }
-      } catch {
-        // Network error — do NOT log out; keep stale UI over a blank screen.
-        // On next navigation the effect re-fires and retries.
+      } catch (e: unknown) {
+        if (cancelled) return
+        const status = (e as { response?: { status?: number } })?.response?.status
+        // 401 means token is invalid (expired, revoked, or account disabled).
+        // Logout and clear the stale token so the user sees a clean login page.
+        if (status === 401) {
+          logout()
+          return
+        }
+        // Other errors (network, 500, etc.) — keep stale UI; don't force logout.
       }
     })()
 
     return () => {
       cancelled = true
     }
-  }, [isLoggedIn, updateUser, syncRemainingFromServer])
+  }, [isLoggedIn, updateUser, syncRemainingFromServer, logout])
 
   return null
 }
