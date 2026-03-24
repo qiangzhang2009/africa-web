@@ -100,6 +100,58 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
+@app.get("/debug/login")
+def debug_login():
+    """Debug endpoint: try login and return any exception details."""
+    import traceback
+    from app.models.database import get_db, _is_postgres
+    from app.models.database import hash_password, verify_password
+    from jose import jwt
+    from datetime import datetime, timedelta, timezone
+
+    try:
+        from app.models.database import get_db_path
+        DB_PATH = get_db(get_db_path())
+        cursor = DB_PATH.cursor()
+        email = "admin@africa-zero.com"
+        password = "AfricaZero2026Admin!"
+
+        # Test the SQL directly
+        if _is_postgres():
+            cursor.execute("SELECT * FROM users WHERE email = %s AND is_active = 1", (email,))
+        else:
+            cursor.execute("SELECT * FROM users WHERE email = ? AND is_active = 1", (email,))
+        row = cursor.fetchone()
+        DB_PATH.close()
+
+        if not row:
+            return {"step": "user_lookup", "result": "not_found"}
+
+        # Test password
+        pwd_ok = verify_password(password, row["password_hash"])
+
+        return {
+            "is_postgres": _is_postgres(),
+            "db_driver": "postgresql" if _is_postgres() else "sqlite",
+            "user_found": True,
+            "user_id": row["id"],
+            "email": row["email"],
+            "password_ok": pwd_ok,
+            "tier": row["tier"],
+            "is_admin": bool(row["is_admin"]),
+            "expires_at": row["expires_at"],
+            "created_at": row["created_at"],
+            "password_hash": row["password_hash"][:20] + "...",
+        }
+    except Exception as e:
+        import sys
+        return {
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
