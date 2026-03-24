@@ -453,6 +453,202 @@ CREATE INDEX IF NOT EXISTS idx_supplier_reviews_sid ON supplier_reviews(supplier
 """
 
 
+# ─── PostgreSQL Schema (SERIAL, CURRENT_TIMESTAMP, ON CONFLICT) ─────────────────
+
+SCHEMA_PG = """
+CREATE TABLE IF NOT EXISTS africa_countries (
+    id          SERIAL PRIMARY KEY,
+    code        TEXT UNIQUE NOT NULL,
+    name_zh     TEXT NOT NULL,
+    name_en     TEXT NOT NULL,
+    in_afcfta  INTEGER DEFAULT 1,
+    has_epa     INTEGER DEFAULT 0,
+    created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS hs_codes (
+    id          SERIAL PRIMARY KEY,
+    hs_4        TEXT NOT NULL,
+    hs_6        TEXT,
+    hs_8        TEXT,
+    hs_10       TEXT UNIQUE,
+    name_zh     TEXT NOT NULL,
+    name_en     TEXT,
+    mfn_rate    REAL NOT NULL,
+    vat_rate    REAL DEFAULT 0.13,
+    category    TEXT,
+    updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS policy_rules (
+    id              SERIAL PRIMARY KEY,
+    market          TEXT NOT NULL,
+    rule_type       TEXT NOT NULL,
+    hs_pattern      TEXT,
+    rule_text       TEXT NOT NULL,
+    rate            REAL,
+    effective_date  TEXT,
+    source_url      TEXT,
+    updated_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id              SERIAL PRIMARY KEY,
+    email           TEXT UNIQUE NOT NULL,
+    password_hash   TEXT NOT NULL,
+    wechat_id       TEXT,
+    tier            TEXT DEFAULT 'free',
+    is_admin        INTEGER DEFAULT 0,
+    is_active       INTEGER DEFAULT 1,
+    subscribed_at   TEXT,
+    expires_at      TEXT,
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS calculations (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER,
+    product_name    TEXT,
+    hs_code         TEXT,
+    origin          TEXT,
+    destination     TEXT,
+    fob_value       REAL,
+    result_json     TEXT,
+    total           REAL,
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL,
+    tier            TEXT NOT NULL,
+    amount          REAL DEFAULT 0,
+    currency        TEXT DEFAULT 'CNY',
+    payment_method  TEXT,
+    payment_channel TEXT DEFAULT 'mock',
+    status          TEXT DEFAULT 'active',
+    started_at      TEXT,
+    expires_at      TEXT,
+    auto_renew      INTEGER DEFAULT 0,
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id              SERIAL PRIMARY KEY,
+    user_id         INTEGER NOT NULL,
+    key_hash        TEXT NOT NULL,
+    key_prefix      TEXT NOT NULL,
+    name            TEXT,
+    tier            TEXT DEFAULT 'enterprise',
+    rate_limit_day  INTEGER DEFAULT 100,
+    is_active       INTEGER DEFAULT 1,
+    last_used_at    TEXT,
+    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sub_accounts (
+    id                  SERIAL PRIMARY KEY,
+    parent_user_id      INTEGER NOT NULL,
+    email               TEXT NOT NULL,
+    password_hash       TEXT NOT NULL,
+    name                TEXT,
+    is_active           INTEGER DEFAULT 1,
+    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS usage_logs (
+    id                  SERIAL PRIMARY KEY,
+    user_id             INTEGER,
+    api_key_id          INTEGER,
+    endpoint            TEXT,
+    ip_address          TEXT,
+    user_agent          TEXT,
+    response_time_ms    INTEGER,
+    status_code         INTEGER,
+    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS freight_routes (
+    id                  SERIAL PRIMARY KEY,
+    origin_country      TEXT NOT NULL,
+    origin_port         TEXT,
+    origin_port_zh      TEXT,
+    dest_country        TEXT DEFAULT 'CN',
+    dest_port           TEXT NOT NULL,
+    dest_port_zh        TEXT NOT NULL,
+    transport_type      TEXT DEFAULT 'sea20gp',
+    cost_min_usd        REAL NOT NULL,
+    cost_max_usd        REAL NOT NULL,
+    transit_days_min    INTEGER,
+    transit_days_max   INTEGER,
+    notes               TEXT,
+    is_active           INTEGER DEFAULT 1,
+    updated_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS cert_guides (
+    id                  SERIAL PRIMARY KEY,
+    country_code        TEXT NOT NULL,
+    country_name_zh     TEXT NOT NULL,
+    cert_type           TEXT DEFAULT 'CO',
+    cert_type_zh        TEXT DEFAULT '原产地证书',
+    issuing_authority   TEXT,
+    issuing_authority_zh TEXT,
+    website_url         TEXT,
+    fee_usd_min         REAL,
+    fee_usd_max         REAL,
+    fee_cny_note        TEXT,
+    days_min            INTEGER,
+    days_max            INTEGER,
+    doc_requirements    TEXT,
+    step_sequence       TEXT,
+    api_available       INTEGER DEFAULT 0,
+    notes               TEXT,
+    is_active           INTEGER DEFAULT 1,
+    updated_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS suppliers (
+    id                  SERIAL PRIMARY KEY,
+    name_zh             TEXT NOT NULL,
+    name_en             TEXT NOT NULL,
+    country             TEXT NOT NULL,
+    region              TEXT,
+    main_products       TEXT,
+    main_hs_codes       TEXT,
+    contact_email       TEXT,
+    min_order_kg        REAL,
+    payment_terms       TEXT,
+    export_years        INTEGER,
+    verified_chamber    INTEGER DEFAULT 0,
+    status              TEXT DEFAULT 'active',
+    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    intro               TEXT
+);
+
+CREATE TABLE IF NOT EXISTS supplier_reviews (
+    id                  SERIAL PRIMARY KEY,
+    supplier_id         INTEGER NOT NULL,
+    user_id             INTEGER NOT NULL,
+    rating              REAL NOT NULL,
+    review_text         TEXT,
+    verified_purchase   INTEGER DEFAULT 0,
+    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_calc_user     ON calculations(user_id);
+CREATE INDEX IF NOT EXISTS idx_calc_day      ON calculations(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_sub_accounts_parent ON sub_accounts(parent_user_id);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_key ON usage_logs(api_key_id);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_day ON usage_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_freight_origin ON freight_routes(origin_country);
+CREATE INDEX IF NOT EXISTS idx_cert_guides_country ON cert_guides(country_code);
+CREATE INDEX IF NOT EXISTS idx_suppliers_country ON suppliers(country);
+CREATE INDEX IF NOT EXISTS idx_supplier_reviews_sid ON supplier_reviews(supplier_id);
+"""
+
+
 # ─── Seed data ────────────────────────────────────────────────────────────────
 
 AFRICA_COUNTRIES = [
