@@ -128,15 +128,15 @@ def health():
 @app.get("/debug/login")
 def debug_login():
     """Debug endpoint: try login and return any exception details."""
-    import traceback
-    from app.models.database import get_db, _is_postgres
+    import traceback, sys
+    from app.models.database import get_db, _is_postgres, get_db_path
     from app.models.database import hash_password, verify_password
     from jose import jwt
     from datetime import datetime, timedelta, timezone
 
     try:
-        from app.models.database import get_db_path
-        DB_PATH = get_db(get_db_path())
+        db_path = get_db_path()
+        DB_PATH = get_db(db_path)
         cursor = DB_PATH.cursor()
         email = "admin@africa-zero.com"
         password = "AfricaZero2026Admin!"
@@ -154,6 +154,52 @@ def debug_login():
 
         # Test password
         pwd_ok = verify_password(password, row["password_hash"])
+        if not pwd_ok:
+            return {"step": "password_verify", "result": "wrong_password"}
+
+        # Simulate the tier expiry check
+        now_str = datetime.now().strftime("%Y-%m-%d")
+        tier = row["tier"]
+        expires_at = row["expires_at"]
+
+        # Simulate tier downgrade
+        tier_step = "no_change"
+        if expires_at and expires_at < now_str:
+            tier = "free"
+            tier_step = "downgraded"
+
+        # Simulate get_user_daily_usage
+        db2 = get_db(db_path)
+        cur2 = db2.cursor()
+        today_expr = "CURRENT_DATE" if _is_postgres() else "DATE('now')"
+        try:
+            cur2.execute(f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = %s AND DATE(created_at) = {today_expr}", (row["id"],)) \
+                if _is_postgres() else \
+                cur2.execute(f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {today_expr}", (row["id"],))
+            cnt = cur2.fetchone()["cnt"]
+        except Exception:
+            cnt = 0
+        db2.close()
+
+        # Simulate create_access_token
+        SECRET_KEY = "africa-zero-secret-key-change-in-production-2026"
+        ALGORITHM = "HS256"
+        token = jwt.encode(
+            {"sub": str(row["id"]), "email": row["email"], "tier": tier, "is_admin": bool(row["is_admin"]),
+             "exp": datetime.now(timezone.utc) + timedelta(days=30)},
+            SECRET_KEY, algorithm=ALGORITHM
+        )
+
+        # Simulate UserResponse
+        user_data = {
+            "id": row["id"], "email": row["email"], "tier": tier,
+            "is_admin": bool(row["is_admin"]), "subscribed_at": row["subscribed_at"],
+            "expires_at": expires_at, "created_at": row["created_at"],
+        }
+
+        # Simulate AuthResponse
+        FREE_DAILY_LIMIT = 3
+        remaining_today = max(0, FREE_DAILY_LIMIT - cnt) if tier == "free" else 999999
 
         return {
             "is_postgres": _is_postgres(),
@@ -162,14 +208,17 @@ def debug_login():
             "user_id": row["id"],
             "email": row["email"],
             "password_ok": pwd_ok,
-            "tier": row["tier"],
+            "tier": tier,
+            "tier_step": tier_step,
             "is_admin": bool(row["is_admin"]),
-            "expires_at": row["expires_at"],
+            "expires_at": expires_at,
             "created_at": row["created_at"],
-            "password_hash": row["password_hash"][:20] + "...",
+            "used_today": cnt,
+            "remaining_today": remaining_today,
+            "token_prefix": token[:20],
+            "password_hash_prefix": row["password_hash"][:20],
         }
     except Exception as e:
-        import sys
         return {
             "error": str(e),
             "type": type(e).__name__,
