@@ -127,6 +127,93 @@ def health():
 
 @app.get("/debug/login")
 def debug_login():
+    """Exactly replicate the login endpoint to find what causes 500."""
+    import traceback, sys
+    from app.routers.auth import login, DB_PATH
+    from app.schemas import UserLogin, AuthResponse
+    from fastapi import HTTPException
+
+    body = UserLogin(email="admin@africa-zero.com", password="AfricaZero2026Admin!")
+    try:
+        # This is EXACTLY what the router does
+        from app.models.database import get_db, verify_password, create_access_token
+        from datetime import datetime
+        from app.models.database import _is_postgres
+
+        conn = get_db(DB_PATH)
+        cursor = conn.cursor()
+        email = body.email.lower().strip()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE email = %s AND is_active = 1",
+            (email,)
+        ) if _is_postgres() else \
+            cursor.execute(
+                "SELECT * FROM users WHERE email = ? AND is_active = 1",
+                (email,)
+            )
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return {"step": "user_lookup", "result": "not_found"}
+
+        pwd_ok = verify_password(body.password, row["password_hash"])
+        if not pwd_ok:
+            return {"step": "password_verify", "result": "wrong_password"}
+
+        now_str = datetime.now().strftime("%Y-%m-%d")
+        tier = row["tier"]
+        expires_at = row["expires_at"]
+
+        if expires_at and expires_at < now_str:
+            tier = "free"
+            conn2 = get_db(DB_PATH)
+            cursor2 = conn2.cursor()
+            cursor2.execute("UPDATE users SET tier = 'free' WHERE id = %s", (row["id"],)) \
+                if _is_postgres() else \
+                cursor2.execute("UPDATE users SET tier = 'free' WHERE id = ?", (row["id"],))
+            conn2.commit()
+            conn2.close()
+
+        # get_user_daily_usage
+        conn3 = get_db(DB_PATH)
+        cur3 = conn3.cursor()
+        today_expr = "CURRENT_DATE" if _is_postgres() else "DATE('now')"
+        try:
+            cur3.execute(
+                f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = %s AND DATE(created_at) = {today_expr}",
+                (row["id"],)
+            ) if _is_postgres() else \
+                cur3.execute(
+                    f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {today_expr}",
+                    (row["id"],)
+                )
+            cnt = cur3.fetchone()["cnt"]
+        except Exception:
+            cnt = 0
+        conn3.close()
+
+        FREE_DAILY_LIMIT = 3
+        token = create_access_token(row["id"], row["email"], tier, bool(row["is_admin"]))
+
+        return {
+            "step": "success",
+            "user_id": row["id"],
+            "tier": tier,
+            "token": token[:20] + "...",
+            "used_today": cnt,
+            "remaining_today": max(0, FREE_DAILY_LIMIT - cnt) if tier == "free" else 999999,
+            "expires_at": expires_at,
+            "row_keys": list(row.keys())[:5],
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+def debug_login():
     """Debug endpoint: try login and return any exception details."""
     import traceback, sys
     from app.models.database import get_db, _is_postgres, get_db_path
