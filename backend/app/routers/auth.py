@@ -23,6 +23,15 @@ router = APIRouter()
 security = HTTPBearer(auto_error=False)
 
 
+def _row_str(val) -> str | None:
+    """Convert PostgreSQL datetime values to ISO string for Pydantic."""
+    if val is None:
+        return None
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return str(val)
+
+
 def create_access_token(user_id: int, email: str, tier: str, is_admin: bool) -> str:
     payload = {
         "sub": str(user_id),
@@ -206,7 +215,7 @@ async def login(body: UserLogin):
 
     now_str = datetime.now().strftime("%Y-%m-%d")
     tier = row["tier"]
-    expires_at = row["expires_at"]
+    expires_at = _row_str(row["expires_at"])
 
     if expires_at and expires_at < now_str:
         tier = "free"
@@ -231,9 +240,9 @@ async def login(body: UserLogin):
         email=row["email"],
         tier=tier,
         is_admin=bool(row["is_admin"]),
-        subscribed_at=row["subscribed_at"],
-        expires_at=expires_at,
-        created_at=row["created_at"],
+        subscribed_at=_row_str(row["subscribed_at"]),
+        expires_at=_row_str(expires_at),
+        created_at=_row_str(row["created_at"]),
     )
     remaining_today = max(0, FREE_DAILY_LIMIT - used_today) if tier == "free" else 999999
     return AuthResponse(access_token=token, user=user, remaining_today=remaining_today, max_free_daily=FREE_DAILY_LIMIT)
@@ -259,7 +268,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 
     now = datetime.now().strftime("%Y-%m-%d")
     tier = row["tier"]
-    expires_at = row["expires_at"]
+    expires_at = _row_str(row["expires_at"])
 
     if expires_at and expires_at < now:
         tier = "free"
@@ -269,9 +278,9 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         email=row["email"],
         tier=tier,
         is_admin=bool(row["is_admin"]),
-        subscribed_at=row["subscribed_at"],
+        subscribed_at=_row_str(row["subscribed_at"]),
         expires_at=expires_at,
-        created_at=row["created_at"],
+        created_at=_row_str(row["created_at"]),
     )
 
 
