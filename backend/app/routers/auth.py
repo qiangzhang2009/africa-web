@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 
-from app.models.database import get_db, hash_password, verify_password, get_db_path, sql_now
+from app.models.database import get_db, hash_password, verify_password, get_db_path, sql_now, _is_postgres
 from app.schemas import (
     UserRegister, UserLogin, UserResponse,
     AuthResponse, SubAccountCreate, SubAccountResponse,
@@ -21,6 +21,20 @@ FREE_DAILY_LIMIT = 3
 
 router = APIRouter()
 security = HTTPBearer(auto_error=False)
+
+
+def _P(sqlite_sql: str) -> str:
+    """Convert SQLite ?-style SQL to PostgreSQL %s-style SQL."""
+    if _is_postgres():
+        return sqlite_sql.replace("?", "%s")
+    return sqlite_sql
+
+
+def _insert_returning_id(sql: str) -> str:
+    """Append RETURNING id for PostgreSQL; no-op for SQLite."""
+    if _is_postgres():
+        return sql.rstrip().rstrip(";") + " RETURNING id"
+    return sql
 
 
 def create_access_token(user_id: int, email: str, tier: str, is_admin: bool) -> str:
@@ -49,7 +63,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             tier = "free"
             conn = get_db(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
+            cursor.execute(_P("UPDATE users SET tier = 'free' WHERE id = ?"), (user_id,))
             conn.commit()
             conn.close()
 
@@ -65,35 +79,21 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 def get_user_daily_usage(user_id: int, db_path: str) -> int:
     """Return how many tariff calculations this user has done today."""
-    # Self-healing: create table if it doesn't exist yet (safe even if already exists)
-    _ensure_calc_table = get_db(db_path)
-    _cur = _ensure_calc_table.cursor()
-    _cur.execute("""
-        CREATE TABLE IF NOT EXISTS calculations (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id         INTEGER,
-            product_name    TEXT,
-            hs_code         TEXT,
-            origin          TEXT,
-            destination     TEXT,
-            fob_value       REAL,
-            result_json     TEXT,
-            total           REAL,
-            created_at      TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    _cur.execute("CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id)")
-    _cur.execute("CREATE INDEX IF NOT EXISTS idx_calc_day ON calculations(created_at)")
-    _ensure_calc_table.commit()
-    _ensure_calc_table.close()
-
     conn = get_db(db_path)
     cursor = conn.cursor()
     try:
-        cursor.execute(
-            f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {sql_now()}",
-            (user_id,)
-        )
+        today_expr = sql_now()
+        if _is_postgres():
+            # sql_now() returns DATE('now') for SQLite, CURRENT_DATE for PG
+            cursor.execute(
+                _P(f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {today_expr}"),
+                (user_id,)
+            )
+        else:
+            cursor.execute(
+                _P(f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {today_expr}"),
+                (user_id,)
+            )
         cnt = cursor.fetchone()["cnt"]
     except Exception:
         cnt = 0
@@ -105,7 +105,7 @@ def get_user_tier_from_db(user_id: int, db_path: str) -> tuple[str, str | None, 
     """Return (tier, expires_at, is_admin, is_active) from the database."""
     conn = get_db(db_path)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    cursor.execute(_P("SELECT * FROM users WHERE id = ?"), (user_id,))
     row = cursor.fetchone()
     conn.close()
     if not row:
@@ -129,7 +129,7 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
             tier = "free"
             conn = get_db(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
+            cursor.execute(_P("UPDATE users SET tier = 'free' WHERE id = ?"), (user_id,))
             conn.commit()
             conn.close()
 
@@ -151,7 +151,7 @@ async def register(body: UserRegister):
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM users WHERE email = ?", (body.email.lower().strip(),))
+    cursor.execute(_P("SELECT id FROM users WHERE email = ?"), (body.email.lower().strip(),))
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=400, detail="该邮箱已注册，请直接登录")
@@ -159,13 +159,16 @@ async def register(body: UserRegister):
     password_hash = hash_password(body.password)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    cursor.execute(
-        """INSERT INTO users (email, password_hash, tier, subscribed_at, expires_at, is_admin, is_active)
-           VALUES (?, ?, 'free', ?, NULL, 0, 1)""",
-        (body.email.lower().strip(), password_hash, now)
+    insert_sql = _insert_returning_id(
+        _P("""INSERT INTO users (email, password_hash, tier, subscribed_at, expires_at, is_admin, is_active)
+                VALUES (?, ?, 'free', ?, NULL, 0, 1)""")
     )
+    cursor.execute(insert_sql, (body.email.lower().strip(), password_hash, now))
     conn.commit()
-    user_id = cursor.lastrowid
+    if _is_postgres():
+        user_id = cursor.fetchone()["id"]
+    else:
+        user_id = cursor.lastrowid
     conn.close()
 
     token = create_access_token(user_id, body.email.lower().strip(), "free", False)
@@ -188,7 +191,7 @@ async def login(body: UserLogin):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT * FROM users WHERE email = ? AND is_active = 1",
+        _P("SELECT * FROM users WHERE email = ? AND is_active = 1"),
         (body.email.lower().strip(),)
     )
     row = cursor.fetchone()
@@ -209,9 +212,7 @@ async def login(body: UserLogin):
         tier = "free"
         conn2 = get_db(DB_PATH)
         cursor2 = conn2.cursor()
-        cursor2.execute(
-            "UPDATE users SET tier = 'free' WHERE id = ?", (row["id"],)
-        )
+        cursor2.execute(_P("UPDATE users SET tier = 'free' WHERE id = ?"), (row["id"],))
         conn2.commit()
         conn2.close()
 
@@ -232,7 +233,6 @@ async def login(body: UserLogin):
         expires_at=expires_at,
         created_at=row["created_at"],
     )
-    # Only free users have a daily quota limit; pro/enterprise have unlimited access.
     remaining_today = max(0, FREE_DAILY_LIMIT - used_today) if tier == "free" else 999999
     return AuthResponse(access_token=token, user=user, remaining_today=remaining_today, max_free_daily=FREE_DAILY_LIMIT)
 
@@ -241,7 +241,7 @@ async def login(body: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = ? AND is_active = 1", (current_user["user_id"],))
+    cursor.execute(_P("SELECT * FROM users WHERE id = ? AND is_active = 1"), (current_user["user_id"],))
     row = cursor.fetchone()
     conn.close()
 
@@ -289,7 +289,7 @@ async def list_sub_accounts(current_user: dict = Depends(get_current_user)):
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM sub_accounts WHERE parent_user_id = ? AND is_active = 1",
+        _P("SELECT * FROM sub_accounts WHERE parent_user_id = ? AND is_active = 1"),
         (current_user["user_id"],)
     )
     rows = cursor.fetchall()
@@ -315,14 +315,18 @@ async def create_sub_account(body: SubAccountCreate, current_user: dict = Depend
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) as cnt FROM sub_accounts WHERE parent_user_id = ? AND is_active = 1",
-                   (current_user["user_id"],))
+    cursor.execute(
+        _P("SELECT COUNT(*) as cnt FROM sub_accounts WHERE parent_user_id = ? AND is_active = 1"),
+        (current_user["user_id"],)
+    )
     if cursor.fetchone()["cnt"] >= 5:
         conn.close()
         raise HTTPException(status_code=400, detail="企业版最多5个子账号，已达上限")
 
-    cursor.execute("SELECT id FROM sub_accounts WHERE email = ? AND is_active = 1",
-                   (body.email.lower().strip(),))
+    cursor.execute(
+        _P("SELECT id FROM sub_accounts WHERE email = ? AND is_active = 1"),
+        (body.email.lower().strip(),)
+    )
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=400, detail="该邮箱已是子账号")
@@ -330,13 +334,16 @@ async def create_sub_account(body: SubAccountCreate, current_user: dict = Depend
     password_hash = hash_password(body.password)
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    cursor.execute(
-        """INSERT INTO sub_accounts (parent_user_id, email, password_hash, name, is_active)
-           VALUES (?, ?, ?, ?, 1)""",
-        (current_user["user_id"], body.email.lower().strip(), password_hash, body.name)
+    insert_sql = _insert_returning_id(
+        _P("""INSERT INTO sub_accounts (parent_user_id, email, password_hash, name, is_active)
+                VALUES (?, ?, ?, ?, 1)""")
     )
+    cursor.execute(insert_sql, (current_user["user_id"], body.email.lower().strip(), password_hash, body.name))
     conn.commit()
-    sub_id = cursor.lastrowid
+    if _is_postgres():
+        sub_id = cursor.fetchone()["id"]
+    else:
+        sub_id = cursor.lastrowid
     conn.close()
 
     return SubAccountResponse(
@@ -356,7 +363,7 @@ async def delete_sub_account(sub_id: int, current_user: dict = Depends(get_curre
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE sub_accounts SET is_active = 0 WHERE id = ? AND parent_user_id = ?",
+        _P("UPDATE sub_accounts SET is_active = 0 WHERE id = ? AND parent_user_id = ?"),
         (sub_id, current_user["user_id"])
     )
     conn.commit()

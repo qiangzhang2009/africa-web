@@ -59,6 +59,17 @@ def _adapt_sql(sql: str) -> str:
     return sql  # SQLite: already uses ?
 
 
+def _adapt_insert(sql: str) -> str:
+    """
+    Convert INSERT SQL so it returns the inserted row id.
+    - PostgreSQL: appends RETURNING id
+    - SQLite: uses cursor.lastrowid (no change needed)
+    """
+    if _is_postgres():
+        return sql.rstrip().rstrip(";") + " RETURNING id"
+    return sql
+
+
 def _adapt_params(params: tuple) -> tuple:
     """Pass params through unchanged (both drivers accept tuples)."""
     return params

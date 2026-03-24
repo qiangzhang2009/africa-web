@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
-from app.models.database import get_db, get_db_path, hash_password, sql_now, sql_date_sub_days, sql_date_add_days
+from app.models.database import get_db, get_db_path, hash_password, sql_now, sql_date_sub_days, sql_date_add_days, _adapt_insert, _is_postgres
 from app.schemas import UserResponse, SubscriptionResponse
 from app.routers.auth import get_current_user
 
@@ -213,12 +213,14 @@ async def create_user(body: AdminCreateUser, _: dict = Depends(_require_admin)):
     expires_at = body.expires_at
 
     cursor.execute(
-        """INSERT INTO users (email, password_hash, tier, subscribed_at, expires_at, is_admin, is_active)
-           VALUES (?, ?, ?, ?, ?, 0, 1)""",
+        _adapt_insert(
+            """INSERT INTO users (email, password_hash, tier, subscribed_at, expires_at, is_admin, is_active)
+               VALUES (?, ?, ?, ?, ?, 0, 1)"""
+        ),
         (body.email.lower().strip(), password_hash, body.tier, now, expires_at)
     )
     conn.commit()
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()["id"] if _is_postgres() else cursor.lastrowid
     conn.close()
     return {"id": user_id, "email": body.email.lower().strip(), "tier": body.tier}
 
@@ -242,12 +244,14 @@ async def admin_create_subscription(body: AdminCreateSubscription, _: dict = Dep
     expires_at = (now + timedelta(days=duration)).strftime("%Y-%m-%d") if duration else None
 
     cursor.execute(
-        """INSERT INTO subscriptions
-           (user_id, tier, amount, payment_method, payment_channel, status, started_at, expires_at)
-           VALUES (?, ?, ?, ?, ?, 'active', ?, ?)""",
+        _adapt_insert(
+            """INSERT INTO subscriptions
+               (user_id, tier, amount, payment_method, payment_channel, status, started_at, expires_at)
+               VALUES (?, ?, ?, ?, ?, 'active', ?, ?)"""
+        ),
         (body.user_id, body.tier, body.amount, body.payment_method, body.payment_channel, started_at, expires_at)
     )
-    sub_id = cursor.lastrowid
+    sub_id = cursor.fetchone()["id"] if _is_postgres() else cursor.lastrowid
     conn.commit()
 
     cursor.execute(

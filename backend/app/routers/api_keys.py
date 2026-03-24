@@ -5,7 +5,7 @@ from datetime import datetime
 import hashlib
 
 from fastapi import APIRouter, HTTPException, Depends, Request
-from app.models.database import get_db, generate_api_key, mask_api_key, get_db_path, sql_now
+from app.models.database import get_db, generate_api_key, mask_api_key, get_db_path, sql_now, _adapt_insert, _is_postgres
 from app.schemas import ApiKeyCreate, ApiKeyResponse, ApiKeyWithPlain
 from app.routers.auth import get_current_user
 
@@ -119,12 +119,17 @@ async def create_api_key(
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
-        """INSERT INTO api_keys (user_id, key_hash, key_prefix, name, tier, rate_limit_day, is_active)
-           VALUES (?, ?, ?, ?, 'enterprise', ?, 1)""",
+        _adapt_insert(
+            """INSERT INTO api_keys (user_id, key_hash, key_prefix, name, tier, rate_limit_day, is_active)
+               VALUES (?, ?, ?, ?, 'enterprise', ?, 1)"""
+        ),
         (current_user["user_id"], key_hash, plain_key[:10], body.name, body.rate_limit_day)
     )
     conn.commit()
-    key_id = cursor.lastrowid
+    if _is_postgres():
+        key_id = cursor.fetchone()["id"]
+    else:
+        key_id = cursor.lastrowid
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn.close()
 

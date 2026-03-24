@@ -6,7 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.models.database import get_db, get_db_path
+from app.models.database import get_db, get_db_path, _adapt_insert, _is_postgres
 from app.routers.auth import get_current_user, get_optional_user
 
 router = APIRouter()
@@ -371,17 +371,19 @@ async def create_supplier_review(
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
-        """INSERT INTO supplier_reviews
-           (supplier_id, user_id, user_email, quality_score, delivery_score,
-            communication_score, comment, is_verified_deal, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        _adapt_insert(
+            """INSERT INTO supplier_reviews
+               (supplier_id, user_id, user_email, quality_score, delivery_score,
+                communication_score, comment, is_verified_deal, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        ),
         (
             supplier_id, current_user["user_id"], current_user["email"],
             body.quality_score, body.delivery_score, body.communication_score,
             body.comment, 1 if body.is_verified_deal else 0, now
         )
     )
-    review_id = cursor.lastrowid
+    review_id = cursor.fetchone()["id"] if _is_postgres() else cursor.lastrowid
 
     # Update supplier rating
     cursor.execute(

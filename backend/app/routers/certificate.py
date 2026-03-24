@@ -8,7 +8,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.models.database import get_db, get_db_path
+from app.models.database import get_db, get_db_path, _adapt_insert, _is_postgres
 from app.routers.auth import get_current_user, get_optional_user
 
 router = APIRouter()
@@ -287,13 +287,14 @@ async def start_cert_application(
         return {"message": "已有进行中的申请记录，继续使用", "application_id": app_id}
 
     cursor.execute(
-        """INSERT INTO cert_applications
-           (user_id, hs_code, origin_country, cert_type, status, current_step, steps_completed)
-           VALUES (?, ?, ?, ?, 'in_progress', 1, '{}')""",
+        _adapt_insert(
+            """INSERT INTO cert_applications
+               (user_id, hs_code, origin_country, cert_type, status, current_step, steps_completed)
+               VALUES (?, ?, ?, ?, 'in_progress', 1, '{}')"""
+        ),
         (current_user["user_id"], body.hs_code, body.origin_country.upper(), body.cert_type)
     )
-    conn.commit()
-    app_id = cursor.lastrowid
+    app_id = cursor.fetchone()["id"] if _is_postgres() else cursor.lastrowid
     conn.close()
 
     return {"message": "申请流程已创建", "application_id": app_id}
