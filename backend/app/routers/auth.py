@@ -40,11 +40,24 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = int(payload.get("sub"))
+        tier, expires_at, is_admin, is_active = get_user_tier_from_db(user_id, DB_PATH)
+        if not is_active:
+            raise HTTPException(status_code=401, detail="账号已禁用")
+
+        now = datetime.now().strftime("%Y-%m-%d")
+        if tier != "free" and expires_at and expires_at < now:
+            tier = "free"
+            conn = get_db(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+
         return {
             "user_id": user_id,
             "email": payload.get("email"),
-            "tier": payload.get("tier"),
-            "is_admin": payload.get("is_admin", False),
+            "tier": tier,
+            "is_admin": is_admin,
         }
     except JWTError:
         raise HTTPException(status_code=401, detail="Token无效或已过期")
@@ -106,11 +119,25 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
         return None
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+        tier, expires_at, is_admin, is_active = get_user_tier_from_db(user_id, DB_PATH)
+        if not is_active:
+            return None
+
+        now = datetime.now().strftime("%Y-%m-%d")
+        if tier != "free" and expires_at and expires_at < now:
+            tier = "free"
+            conn = get_db(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
+            conn.commit()
+            conn.close()
+
         return {
-            "user_id": int(payload.get("sub")),
+            "user_id": user_id,
             "email": payload.get("email"),
-            "tier": payload.get("tier"),
-            "is_admin": payload.get("is_admin", False),
+            "tier": tier,
+            "is_admin": is_admin,
         }
     except JWTError:
         return None
@@ -245,6 +272,7 @@ async def get_daily_usage(current_user: dict = Depends(get_current_user)):
         "used_today": used_today,
         "remaining_today": max(0, FREE_DAILY_LIMIT - used_today),
         "max_free_daily": FREE_DAILY_LIMIT,
+        "tier": current_user["tier"],
     }
 
 

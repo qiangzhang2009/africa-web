@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
-from app.models.database import get_db, get_db_path
+from app.models.database import get_db, get_db_path, hash_password
 from app.schemas import UserResponse, SubscriptionResponse
 from app.routers.auth import get_current_user
 
@@ -189,6 +189,10 @@ async def update_user(user_id: int, body: AdminUpdateUser, _: dict = Depends(_re
     params.append(user_id)
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="用户不存在")
     cursor.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", params)
     conn.commit()
     conn.close()
@@ -243,17 +247,18 @@ async def admin_create_subscription(body: AdminCreateSubscription, _: dict = Dep
            VALUES (?, ?, ?, ?, ?, 'active', ?, ?)""",
         (body.user_id, body.tier, body.amount, body.payment_method, body.payment_channel, started_at, expires_at)
     )
+    sub_id = cursor.lastrowid
     conn.commit()
 
     cursor.execute(
-        "UPDATE users SET tier = ?, expires_at = ? WHERE id = ?",
-        (body.tier, expires_at, body.user_id)
+        "UPDATE users SET tier = ?, subscribed_at = ?, expires_at = ? WHERE id = ?",
+        (body.tier, started_at, expires_at, body.user_id)
     )
     conn.commit()
     conn.close()
 
     return SubscriptionResponse(
-        id=0,
+        id=sub_id,
         tier=body.tier,
         amount=body.amount,
         currency="CNY",

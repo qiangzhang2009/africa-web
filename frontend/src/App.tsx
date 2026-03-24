@@ -20,6 +20,8 @@ import CertificatePage from './pages/CertificatePage'
 import SuppliersPage from './pages/SuppliersPage'
 import { track } from './utils/track'
 import { useTrackInit } from './hooks/useTrackInit'
+import { useAppStore } from './hooks/useAppStore'
+import { getDailyUsage, getMe, getToken } from './utils/api'
 
 function TrackPageView() {
   const location = useLocation()
@@ -33,10 +35,45 @@ function TrackPageView() {
   return null
 }
 
+function AuthBootstrap() {
+  const { isLoggedIn, updateUser, syncRemainingFromServer, logout } = useAppStore()
+
+  useEffect(() => {
+    const token = getToken()
+    if (!token) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [user, usage] = await Promise.all([
+          getMe(),
+          getDailyUsage().catch(() => null),
+        ])
+        if (cancelled) return
+        updateUser(user)
+        if (usage && typeof usage.remaining_today === 'number') {
+          syncRemainingFromServer(usage.remaining_today)
+        }
+      } catch {
+        if (!cancelled && isLoggedIn) {
+          logout()
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isLoggedIn, logout, syncRemainingFromServer, updateUser])
+
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <TrackPageView />
+      <AuthBootstrap />
       <Routes>
           <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
