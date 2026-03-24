@@ -21,6 +21,7 @@ from app.routers.suppliers import router as suppliers_router
 
 load_dotenv()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Bootstrap: ensure DB schema and seed data exist on startup."""
@@ -31,17 +32,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
-# ─── CORS configuration (must be before any routes) ─────────────────────────
-# 明确允许的跨域来源（不能用 * 因为 credentials=True 时浏览器拒绝 *）
-# OnRender 后端通过 Vercel rewrite 被 AfricaZero 前端调用
 _allow_origins = [
     "https://africa.zxqconsulting.com",
     "https://global2china.zxqconsulting.com",
     "https://frontend-nrlqfber2-johnzhangs-projects-50e83ec4.vercel.app",
     "https://africa-web-1.onrender.com",
     "https://africa-zero-frontend.vercel.app",
-    "http://localhost:5173",  # dev
-    "http://localhost:8000",  # dev
+    "http://localhost:5173",
+    "http://localhost:8000",
 ]
 _allow_credentials = True
 
@@ -52,7 +50,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORSMiddleware MUST come FIRST (before routes) so it handles OPTIONS preflight
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allow_origins,
@@ -62,9 +59,6 @@ app.add_middleware(
 )
 
 
-# ─── Global OPTIONS handler (bypasses lifespan/cold-start delays) ────────────
-# OnRender 免费版冷启动时 lifespan 中的 init_db() 会阻塞 OPTIONS 预检请求
-# 解决：添加同步 OPTIONS 处理器，优先于所有异步路由匹配
 @app.api_route("/{path:path}", methods=["OPTIONS"])
 async def options_handler(request: Request, path: str):
     """Handle all OPTIONS preflight requests before reaching any route handler."""
@@ -81,7 +75,6 @@ async def options_handler(request: Request, path: str):
     )
 
 
-# ─── Routes ──────────────────────────────────────────────────────────────────
 app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
 app.include_router(hs_codes.router, prefix="/api/v1", tags=["HS编码查询"])
 app.include_router(countries.router, prefix="/api/v1", tags=["国家信息"])
@@ -97,220 +90,7 @@ app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
 
 @app.get("/health")
 def health():
-    import traceback
-    from app.models.database import get_db_path, _is_postgres
-    try:
-        from app.models.database import get_db
-        db_path = get_db_path()
-        is_pg = _is_postgres()
-        conn = get_db(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) as cnt FROM users")
-        user_count = cursor.fetchone()["cnt"]
-        conn.close()
-        return {
-            "status": "ok",
-            "service": "africa-zero",
-            "is_postgres": is_pg,
-            "db_path": db_path[:30] + "..." if len(db_path) > 30 else db_path,
-            "user_count": user_count,
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "service": "africa-zero",
-            "error": str(e),
-            "error_type": type(e).__name__,
-            "traceback": traceback.format_exc()[-500:],
-        }
-
-
-@app.get("/debug/login")
-def debug_login():
-    """Exactly replicate the login endpoint to find what causes 500."""
-    import traceback, sys
-    from app.routers.auth import login, DB_PATH
-    from app.schemas import UserLogin, AuthResponse
-    from fastapi import HTTPException
-
-    body = UserLogin(email="admin@africa-zero.com", password="AfricaZero2026Admin!")
-    try:
-        # This is EXACTLY what the router does
-        from app.models.database import get_db, verify_password, create_access_token
-        from datetime import datetime
-        from app.models.database import _is_postgres
-
-        conn = get_db(DB_PATH)
-        cursor = conn.cursor()
-        email = body.email.lower().strip()
-
-        cursor.execute(
-            "SELECT * FROM users WHERE email = %s AND is_active = 1",
-            (email,)
-        ) if _is_postgres() else \
-            cursor.execute(
-                "SELECT * FROM users WHERE email = ? AND is_active = 1",
-                (email,)
-            )
-        row = cursor.fetchone()
-        conn.close()
-
-        if not row:
-            return {"step": "user_lookup", "result": "not_found"}
-
-        pwd_ok = verify_password(body.password, row["password_hash"])
-        if not pwd_ok:
-            return {"step": "password_verify", "result": "wrong_password"}
-
-        now_str = datetime.now().strftime("%Y-%m-%d")
-        tier = row["tier"]
-        expires_at = row["expires_at"]
-
-        if expires_at and expires_at < now_str:
-            tier = "free"
-            conn2 = get_db(DB_PATH)
-            cursor2 = conn2.cursor()
-            cursor2.execute("UPDATE users SET tier = 'free' WHERE id = %s", (row["id"],)) \
-                if _is_postgres() else \
-                cursor2.execute("UPDATE users SET tier = 'free' WHERE id = ?", (row["id"],))
-            conn2.commit()
-            conn2.close()
-
-        # get_user_daily_usage
-        conn3 = get_db(DB_PATH)
-        cur3 = conn3.cursor()
-        today_expr = "CURRENT_DATE" if _is_postgres() else "DATE('now')"
-        try:
-            cur3.execute(
-                f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = %s AND DATE(created_at) = {today_expr}",
-                (row["id"],)
-            ) if _is_postgres() else \
-                cur3.execute(
-                    f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {today_expr}",
-                    (row["id"],)
-                )
-            cnt = cur3.fetchone()["cnt"]
-        except Exception:
-            cnt = 0
-        conn3.close()
-
-        FREE_DAILY_LIMIT = 3
-        token = create_access_token(row["id"], row["email"], tier, bool(row["is_admin"]))
-
-        return {
-            "step": "success",
-            "user_id": row["id"],
-            "tier": tier,
-            "token": token[:20] + "...",
-            "used_today": cnt,
-            "remaining_today": max(0, FREE_DAILY_LIMIT - cnt) if tier == "free" else 999999,
-            "expires_at": expires_at,
-            "row_keys": list(row.keys())[:5],
-        }
-    except Exception as e:
-        return {
-            "error": str(e),
-            "type": type(e).__name__,
-            "traceback": traceback.format_exc(),
-        }
-def debug_login():
-    """Debug endpoint: try login and return any exception details."""
-    import traceback, sys
-    from app.models.database import get_db, _is_postgres, get_db_path
-    from app.models.database import hash_password, verify_password
-    from jose import jwt
-    from datetime import datetime, timedelta, timezone
-
-    try:
-        db_path = get_db_path()
-        DB_PATH = get_db(db_path)
-        cursor = DB_PATH.cursor()
-        email = "admin@africa-zero.com"
-        password = "AfricaZero2026Admin!"
-
-        # Test the SQL directly
-        if _is_postgres():
-            cursor.execute("SELECT * FROM users WHERE email = %s AND is_active = 1", (email,))
-        else:
-            cursor.execute("SELECT * FROM users WHERE email = ? AND is_active = 1", (email,))
-        row = cursor.fetchone()
-        DB_PATH.close()
-
-        if not row:
-            return {"step": "user_lookup", "result": "not_found"}
-
-        # Test password
-        pwd_ok = verify_password(password, row["password_hash"])
-        if not pwd_ok:
-            return {"step": "password_verify", "result": "wrong_password"}
-
-        # Simulate the tier expiry check
-        now_str = datetime.now().strftime("%Y-%m-%d")
-        tier = row["tier"]
-        expires_at = row["expires_at"]
-
-        # Simulate tier downgrade
-        tier_step = "no_change"
-        if expires_at and expires_at < now_str:
-            tier = "free"
-            tier_step = "downgraded"
-
-        # Simulate get_user_daily_usage
-        db2 = get_db(db_path)
-        cur2 = db2.cursor()
-        today_expr = "CURRENT_DATE" if _is_postgres() else "DATE('now')"
-        try:
-            cur2.execute(f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = %s AND DATE(created_at) = {today_expr}", (row["id"],)) \
-                if _is_postgres() else \
-                cur2.execute(f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {today_expr}", (row["id"],))
-            cnt = cur2.fetchone()["cnt"]
-        except Exception:
-            cnt = 0
-        db2.close()
-
-        # Simulate create_access_token
-        SECRET_KEY = "africa-zero-secret-key-change-in-production-2026"
-        ALGORITHM = "HS256"
-        token = jwt.encode(
-            {"sub": str(row["id"]), "email": row["email"], "tier": tier, "is_admin": bool(row["is_admin"]),
-             "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-            SECRET_KEY, algorithm=ALGORITHM
-        )
-
-        # Simulate UserResponse
-        user_data = {
-            "id": row["id"], "email": row["email"], "tier": tier,
-            "is_admin": bool(row["is_admin"]), "subscribed_at": row["subscribed_at"],
-            "expires_at": expires_at, "created_at": row["created_at"],
-        }
-
-        # Simulate AuthResponse
-        FREE_DAILY_LIMIT = 3
-        remaining_today = max(0, FREE_DAILY_LIMIT - cnt) if tier == "free" else 999999
-
-        return {
-            "is_postgres": _is_postgres(),
-            "db_driver": "postgresql" if _is_postgres() else "sqlite",
-            "user_found": True,
-            "user_id": row["id"],
-            "email": row["email"],
-            "password_ok": pwd_ok,
-            "tier": tier,
-            "tier_step": tier_step,
-            "is_admin": bool(row["is_admin"]),
-            "expires_at": expires_at,
-            "created_at": row["created_at"],
-            "used_today": cnt,
-            "remaining_today": remaining_today,
-            "token_prefix": token[:20],
-            "password_hash_prefix": row["password_hash"][:20],
-        }
-    except Exception as e:
-        return {
-            "error": str(e),
-            "type": type(e).__name__,
-            "traceback": traceback.format_exc(),
-        }
+    return {"status": "ok", "service": "africa-zero"}
 
 
 if __name__ == "__main__":
