@@ -5,7 +5,7 @@ from datetime import datetime
 import hashlib
 
 from fastapi import APIRouter, HTTPException, Depends, Request
-from app.models.database import get_db, generate_api_key, mask_api_key, get_db_path
+from app.models.database import get_db, generate_api_key, mask_api_key, get_db_path, sql_now
 from app.schemas import ApiKeyCreate, ApiKeyResponse, ApiKeyWithPlain
 from app.routers.auth import get_current_user
 

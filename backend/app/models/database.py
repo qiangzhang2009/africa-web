@@ -1,5 +1,6 @@
 """
-Database models using SQLite + Peewee ORM.
+Database models using SQLite or PostgreSQL (Neon).
+Automatically detects DATABASE_URL to choose the right driver.
 Schema: africa_countries, hs_codes, policy_rules, users, calculations,
         subscriptions, api_keys, sub_accounts, usage_logs
 """
@@ -10,6 +11,11 @@ import hashlib
 import secrets
 from pathlib import Path
 from datetime import datetime
+from typing import Any, Optional
+
+
+# ─── Password hashing ─────────────────────────────────────────────────────────
+
 try:
     from passlib.context import CryptContext
     _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -25,6 +31,8 @@ except ImportError:
         return _bc.checkpw(plain.encode(), hashed.encode())
 
 
+# ─── API Key helpers ─────────────────────────────────────────────────────────
+
 def generate_api_key() -> tuple[str, str]:
     """Generate a random API key. Returns (plain_key, hash_for_db)."""
     plain = f"az_{secrets.token_urlsafe(32)}"
@@ -39,7 +47,147 @@ def mask_api_key(plain: str) -> str:
     return plain[:10] + "***" + plain[-4:]
 
 
-def get_db(path: str) -> sqlite3.Connection:
+# ─── PostgreSQL parameter style adapter ────────────────────────────────────────
+# psycopg2 uses %s, sqlite uses ?.  We normalise to %s everywhere and adapt here.
+
+_sql_placeholder = "?"   # SQLite style (default)
+
+def _adapt_sql(sql: str) -> str:
+    """Convert ? placeholders to the driver's native style."""
+    if _is_postgres():
+        return sql.replace("?", "%s")
+    return sql  # SQLite: already uses ?
+
+
+def _adapt_params(params: tuple) -> tuple:
+    """Pass params through unchanged (both drivers accept tuples)."""
+    return params
+
+
+# ─── Date function helpers (compatible with both SQLite and PostgreSQL) ─────────
+
+def sql_now() -> str:
+    """Return the SQL expression for 'current date' in the active driver's syntax."""
+    return "CURRENT_DATE" if _is_postgres() else "DATE('now')"
+
+
+def sql_date_sub_days(days: int) -> str:
+    """Return SQL for 'today minus N days' in the active driver's syntax."""
+    if _is_postgres():
+        return f"CURRENT_DATE - INTERVAL '{days} days'"
+    return f"DATE('now', '-{days} days')"
+
+
+def sql_date_add_days(days: int) -> str:
+    """Return SQL for 'today plus N days' in the active driver's syntax."""
+    if _is_postgres():
+        return f"CURRENT_DATE + INTERVAL '{days} days'"
+    return f"DATE('now', '+{days} days')"
+
+
+# ─── Database driver detection ────────────────────────────────────────────────
+
+def _is_postgres() -> bool:
+    url = os.getenv("DATABASE_URL", "")
+    return url.startswith("postgres://") or url.startswith("postgresql://")
+
+
+# ─── PostgreSQL compatibility layer ─────────────────────────────────────────
+
+def _make_pg_cursor(pg_conn):
+    """
+    Return a cursor that returns dict-like rows (like sqlite3.Row).
+    This makes the rest of the code work identically for both drivers.
+    """
+    class _DictCursor:
+        def __init__(self, conn):
+            self._conn = conn
+            self._cursor = conn.cursor()
+            self._description = None
+
+        def execute(self, sql: str, params: tuple = ()):
+            adapted = _adapt_sql(sql)
+            return self._cursor.execute(adapted, params)
+
+        def executemany(self, sql: str, seq_of_params):
+            adapted = _adapt_sql(sql)
+            return self._cursor.executemany(adapted, seq_of_params)
+
+        def fetchone(self):
+            row = self._cursor.fetchone()
+            if row is None:
+                return None
+            return _DictRow(self._cursor.description, row)
+
+        def fetchall(self):
+            return [self._DictRow(self._cursor.description, r) for r in self._cursor.fetchall()]
+
+        @property
+        def description(self):
+            return self._cursor.description
+
+    class _DictRow:
+        """Row that supports both row[i] and row['colname'] access."""
+        def __init__(self, description, values):
+            self._desc = description
+            self._vals = values
+            self._map = {col[0]: i for i, col in enumerate(description)}
+
+        def __getitem__(self, key):
+            if isinstance(key, int):
+                return self._vals[key]
+            return self._vals[self._map[key]]
+
+        def keys(self):
+            return [col[0] for col in self._desc]
+
+        def values(self):
+            return self._vals
+
+        def __contains__(self, key):
+            return key in self._map
+
+    return _DictCursor(pg_conn)
+
+
+class _PgConnection:
+    """
+    PostgreSQL connection wrapper that mimics sqlite3.Connection interface.
+    Usage in code stays identical: conn = get_db(path); cursor = conn.cursor().
+    """
+    def __init__(self, pg_url: str):
+        import psycopg2
+        from psycopg2 import pool
+        raw = pg_url.replace("postgresql://", "postgres://")
+        self._pool = pool.ThreadedConnectionPool(minconn=1, maxconn=5, dsn=raw, connect_timeout=10)
+        self._thread_conn: Optional[Any] = None
+
+    def cursor(self):
+        if self._thread_conn is None:
+            self._thread_conn = self._pool.getconn()
+        return _make_pg_cursor(self._thread_conn)
+
+    def commit(self):
+        if self._thread_conn:
+            self._thread_conn.commit()
+
+    def close(self):
+        if self._thread_conn:
+            self._pool.putconn(self._thread_conn)
+            self._thread_conn = None
+
+
+# ─── get_db / get_db_path ────────────────────────────────────────────────────
+
+def get_db(path: str):
+    """
+    Return a database connection (SQLite or PostgreSQL based on DATABASE_URL).
+    Interface: get_db(path) -> connection
+              conn.cursor() -> cursor with dict-like rows
+              conn.commit() / conn.close()
+    """
+    if _is_postgres():
+        return _PgConnection(path)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -47,11 +195,13 @@ def get_db(path: str) -> sqlite3.Connection:
 
 def get_db_path() -> str:
     """
-    Returns the canonical DB path used by all modules.
-    Resolves DATABASE_URL env var consistently regardless of where it is called.
-    Creates the parent directory if needed.
+    Returns the canonical DATABASE_URL or path used by all modules.
+    For SQLite: resolves relative paths, creates parent dir.
+    For PostgreSQL: returns the connection URL as-is.
     """
     raw = os.getenv("DATABASE_URL", "data/africa_zero.db")
+    if raw.startswith("postgres://") or raw.startswith("postgresql://"):
+        return raw
     path = Path(raw)
     if not path.is_absolute():
         path = Path.cwd() / path
@@ -941,113 +1091,109 @@ def init_db(db_path: str) -> None:
     conn = get_db(db_path)
     cursor = conn.cursor()
 
-    # Create schema
-    cursor.executescript(SCHEMA_SQL)
+    # ── Create schema ──────────────────────────────────────────────────────────
+    if _is_postgres():
+        # PostgreSQL: split by ';' and execute each statement separately
+        for stmt in SCHEMA_PG.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                cursor.execute(stmt)
+    else:
+        cursor.executescript(SCHEMA_SQL)
     conn.commit()
 
     # ── Migration: add missing columns to existing users table ─────────────────
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
-    except Exception:
-        pass
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
-    except Exception:
-        pass
+    for alter_sql in [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
+    ]:
+        try:
+            cursor.execute(alter_sql)
+        except Exception:
+            pass
 
-    # ── Seed countries if empty ──────────────────────────────────────────────
+    # ── Helper: insert-or-do-nothing (works for both drivers) ─────────────────
+    def upsert_many(table: str, cols: str, values: list, insert_sql: str, update_sql: str = ""):
+        """Insert many rows; for PostgreSQL uses ON CONFLICT DO NOTHING."""
+        if _is_postgres():
+            on_conflict = f"ON CONFLICT DO NOTHING"
+            final_sql = insert_sql.replace("VALUES", f"{on_conflict} VALUES", 1)
+        else:
+            final_sql = insert_sql.replace("INSERT INTO", "INSERT OR IGNORE INTO", 1)
+        try:
+            cursor.executemany(final_sql, values)
+        except Exception:
+            pass
+
+    def force_upsert_many(table: str, values: list, insert_sql: str):
+        """Delete all then insert. Works for both drivers."""
+        try:
+            cursor.execute(f"DELETE FROM {table}")
+            cursor.executemany(insert_sql, values)
+        except Exception:
+            pass
+
+    # ── Seed countries ─────────────────────────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM africa_countries")
     if cursor.fetchone()[0] == 0:
-        cursor.executemany(
-            "INSERT OR IGNORE INTO africa_countries (code, name_zh, name_en, in_afcfta, has_epa) VALUES (?, ?, ?, ?, ?)",
-            AFRICA_COUNTRIES
+        upsert_many(
+            "africa_countries",
+            "(code, name_zh, name_en, in_afcfta, has_epa)",
+            AFRICA_COUNTRIES,
+            "INSERT INTO africa_countries (code, name_zh, name_en, in_afcfta, has_epa) VALUES (?, ?, ?, ?, ?)",
         )
 
-    # ── Seed HS codes if empty OR re-seed ────────────────────────────────────
+    # ── Seed HS codes ──────────────────────────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM hs_codes")
     if cursor.fetchone()[0] == 0:
-        cursor.executemany(
-            """INSERT OR IGNORE INTO hs_codes
-               (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            HS_CODES_SEED
+        upsert_many(
+            "hs_codes", "", HS_CODES_SEED,
+            "INSERT INTO hs_codes (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        cursor.execute("DELETE FROM hs_codes")
-        cursor.executemany(
-            """INSERT INTO hs_codes
-               (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            HS_CODES_SEED
+        force_upsert_many(
+            "hs_codes", HS_CODES_SEED,
+            "INSERT INTO hs_codes (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
-    # ── Seed freight routes (force update to fix data quality issues) ─────────────
+    # ── Seed freight routes ────────────────────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM freight_routes")
     if cursor.fetchone()[0] == 0:
-        cursor.executemany(
-            """INSERT OR IGNORE INTO freight_routes
-               (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh,
-                transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            FREIGHT_ROUTES_SEED
+        upsert_many(
+            "freight_routes", "", FREIGHT_ROUTES_SEED,
+            "INSERT INTO freight_routes (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh, transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        cursor.execute("DELETE FROM freight_routes")
-        cursor.executemany(
-            """INSERT INTO freight_routes
-               (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh,
-                transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            FREIGHT_ROUTES_SEED
+        force_upsert_many(
+            "freight_routes", FREIGHT_ROUTES_SEED,
+            "INSERT INTO freight_routes (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh, transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
-    # ── Seed certificate guides (force update to fix data quality issues) ───────
+    # ── Seed certificate guides ───────────────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM cert_guides")
     if cursor.fetchone()[0] == 0:
-        cursor.executemany(
-            """INSERT OR IGNORE INTO cert_guides
-               (country_code, country_name_zh, cert_type, issuing_authority,
-                issuing_authority_zh, website_url, fee_usd_min, fee_usd_max,
-                days_min, days_max, doc_requirements, step_sequence, api_available, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            CERT_GUIDES_SEED
+        upsert_many(
+            "cert_guides", "", CERT_GUIDES_SEED,
+            "INSERT INTO cert_guides (country_code, country_name_zh, cert_type, issuing_authority, issuing_authority_zh, website_url, fee_usd_min, fee_usd_max, days_min, days_max, doc_requirements, step_sequence, api_available, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        cursor.execute("DELETE FROM cert_guides")
-        cursor.executemany(
-            """INSERT INTO cert_guides
-               (country_code, country_name_zh, cert_type, issuing_authority,
-                issuing_authority_zh, website_url, fee_usd_min, fee_usd_max,
-                days_min, days_max, doc_requirements, step_sequence, api_available, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            CERT_GUIDES_SEED
+        force_upsert_many(
+            "cert_guides", CERT_GUIDES_SEED,
+            "INSERT INTO cert_guides (country_code, country_name_zh, cert_type, issuing_authority, issuing_authority_zh, website_url, fee_usd_min, fee_usd_max, days_min, days_max, doc_requirements, step_sequence, api_available, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
-    # ── Seed suppliers (force update to fix data quality issues) ──────────────
+    # ── Seed suppliers ─────────────────────────────────────────────────────────
     cursor.execute("SELECT COUNT(*) FROM suppliers")
     if cursor.fetchone()[0] == 0:
-        cursor.executemany(
-            """INSERT OR IGNORE INTO suppliers
-               (name_zh, name_en, country, region, main_products, main_hs_codes,
-                contact_email, min_order_kg, payment_terms, export_years,
-                verified_chamber, status, intro)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            SUPPLIERS_SEED
+        upsert_many(
+            "suppliers", "", SUPPLIERS_SEED,
+            "INSERT INTO suppliers (name_zh, name_en, country, region, main_products, main_hs_codes, contact_email, min_order_kg, payment_terms, export_years, verified_chamber, status, intro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        # Force re-seed: fix data issues (e.g. HS codes stored as floats)
-        cursor.execute("DELETE FROM suppliers")
-        cursor.executemany(
-            """INSERT INTO suppliers
-               (name_zh, name_en, country, region, main_products, main_hs_codes,
-                contact_email, min_order_kg, payment_terms, export_years,
-                verified_chamber, status, intro)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            SUPPLIERS_SEED
+        force_upsert_many(
+            "suppliers", SUPPLIERS_SEED,
+            "INSERT INTO suppliers (name_zh, name_en, country, region, main_products, main_hs_codes, contact_email, min_order_kg, payment_terms, export_years, verified_chamber, status, intro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
     conn.commit()

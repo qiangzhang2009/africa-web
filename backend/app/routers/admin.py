@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
-from app.models.database import get_db, get_db_path, hash_password
+from app.models.database import get_db, get_db_path, hash_password, sql_now, sql_date_sub_days, sql_date_add_days
 from app.schemas import UserResponse, SubscriptionResponse
 from app.routers.auth import get_current_user
 
@@ -307,13 +307,13 @@ async def get_stats(_: dict = Depends(_require_admin)):
 
     # New users this week
     cursor.execute(
-        "SELECT COUNT(*) as cnt FROM users WHERE DATE(created_at) >= DATE('now', '-7 days')"
+        f"SELECT COUNT(*) as cnt FROM users WHERE DATE(created_at) >= {sql_date_sub_days(7)}"
     )
     new_users_week = cursor.fetchone()["cnt"]
 
     # Expiring soon (next 7 days)
     cursor.execute(
-        "SELECT COUNT(*) as cnt FROM users WHERE expires_at BETWEEN DATE('now') AND DATE('now', '+7 days') AND tier != 'free'"
+        f"SELECT COUNT(*) as cnt FROM users WHERE expires_at BETWEEN {sql_now()} AND {sql_date_add_days(7)} AND tier != 'free'"
     )
     expiring_soon = cursor.fetchone()["cnt"]
 

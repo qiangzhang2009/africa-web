@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 
-from app.models.database import get_db, hash_password, verify_password, get_db_path
+from app.models.database import get_db, hash_password, verify_password, get_db_path, sql_now
 from app.schemas import (
     UserRegister, UserLogin, UserResponse,
     AuthResponse, SubAccountCreate, SubAccountResponse,
@@ -91,7 +91,7 @@ def get_user_daily_usage(user_id: int, db_path: str) -> int:
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = DATE('now')",
+            f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id = ? AND DATE(created_at) = {sql_now()}",
             (user_id,)
         )
         cnt = cursor.fetchone()["cnt"]

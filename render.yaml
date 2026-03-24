@@ -23,7 +23,8 @@ services:
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: DATABASE_URL
-        value: data/africa_zero.db
+        sync: false
+        # PostgreSQL connection string from Neon (set in Render Dashboard → Environment)
       - key: POETRY_DISABLED
         value: "1"
 
