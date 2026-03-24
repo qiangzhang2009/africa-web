@@ -97,7 +97,32 @@ app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "africa-zero"}
+    import traceback
+    from app.models.database import get_db_path, _is_postgres
+    try:
+        from app.models.database import get_db
+        db_path = get_db_path()
+        is_pg = _is_postgres()
+        conn = get_db(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as cnt FROM users")
+        user_count = cursor.fetchone()["cnt"]
+        conn.close()
+        return {
+            "status": "ok",
+            "service": "africa-zero",
+            "is_postgres": is_pg,
+            "db_path": db_path[:30] + "..." if len(db_path) > 30 else db_path,
+            "user_count": user_count,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "service": "africa-zero",
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()[-500:],
+        }
 
 
 @app.get("/debug/login")
