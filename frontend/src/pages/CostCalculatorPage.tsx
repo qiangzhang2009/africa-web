@@ -77,6 +77,7 @@ export default function CostCalculatorPage() {
   const originRef = useRef('ET')
 
   useEffect(() => {
+    if (tier !== 'free') return
     getDailyUsage()
       .then(d => {
         if (d.remaining_today !== undefined) {
@@ -84,7 +85,7 @@ export default function CostCalculatorPage() {
         }
       })
       .catch(() => { /* silent */ })
-  }, [])
+  }, [tier, syncRemainingFromServer])
 
   // Auto-fill from URL params (passed from product detail page)
   useEffect(() => {

@@ -132,7 +132,7 @@ export default function CalculatorPage() {
 
   useEffect(() => {
     syncCounter()
-    // Sync remainingToday from server (authoritative source)
+    if (tier !== 'free') return
     getDailyUsage()
       .then(d => {
         if (d.remaining_today !== undefined) {
@@ -140,7 +140,7 @@ export default function CalculatorPage() {
         }
       })
       .catch(() => { /* silent — use local state as fallback */ })
-  }, [])
+  }, [tier, syncCounter, syncRemainingFromServer])
 
   // Auto-fill from URL params (passed from product detail or other pages)
   useEffect(() => {
