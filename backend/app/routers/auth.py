@@ -232,7 +232,9 @@ async def login(body: UserLogin):
         expires_at=expires_at,
         created_at=row["created_at"],
     )
-    return AuthResponse(access_token=token, user=user, remaining_today=max(0, FREE_DAILY_LIMIT - used_today), max_free_daily=FREE_DAILY_LIMIT)
+    # Only free users have a daily quota limit; pro/enterprise have unlimited access.
+    remaining_today = max(0, FREE_DAILY_LIMIT - used_today) if tier == "free" else 999999
+    return AuthResponse(access_token=token, user=user, remaining_today=remaining_today, max_free_daily=FREE_DAILY_LIMIT)
 
 
 @router.get("/auth/me", response_model=UserResponse)
@@ -268,9 +270,10 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 async def get_daily_usage(current_user: dict = Depends(get_current_user)):
     """Return the user's remaining free daily queries and tier info, synced from the server."""
     used_today = get_user_daily_usage(current_user["user_id"], DB_PATH)
+    remaining_today = max(0, FREE_DAILY_LIMIT - used_today) if current_user["tier"] == "free" else 999999
     return {
         "used_today": used_today,
-        "remaining_today": max(0, FREE_DAILY_LIMIT - used_today),
+        "remaining_today": remaining_today,
         "max_free_daily": FREE_DAILY_LIMIT,
         "tier": current_user["tier"],
     }

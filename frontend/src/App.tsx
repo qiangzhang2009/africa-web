@@ -50,7 +50,8 @@ function AuthBootstrap() {
         ])
         if (cancelled) return
         updateUser(user)
-        if (usage && typeof usage.remaining_today === 'number') {
+        // Only sync daily usage for free users; pro/enterprise users have unlimited access.
+        if (usage && typeof usage.remaining_today === 'number' && user.tier === 'free') {
           syncRemainingFromServer(usage.remaining_today)
         }
       } catch (e: unknown) {
@@ -69,7 +70,7 @@ function AuthBootstrap() {
     return () => {
       cancelled = true
     }
-  }, [isLoggedIn, updateUser, syncRemainingFromServer, logout])
+  }, [isLoggedIn, updateUser, logout])
 
   return null
 }
