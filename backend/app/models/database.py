@@ -94,24 +94,32 @@ def _is_postgres() -> bool:
 
 # ─── PostgreSQL compatibility layer ─────────────────────────────────────────
 
-def _make_pg_cursor(pg_conn):
-    """
-    Return a cursor that returns dict-like rows (like sqlite3.Row).
-    This makes the rest of the code work identically for both drivers.
-    """
+def _pg_connect(url: str):
+    """Create a fresh psycopg2 connection. Returns (raw_conn, wrapped_cursor)."""
+    import psycopg2
+    raw = url.replace("postgresql://", "postgres://")
+    conn = psycopg2.connect(raw, connect_timeout=10)
+
     class _DictCursor:
         def __init__(self, conn):
             self._conn = conn
             self._cursor = conn.cursor()
-            self._description = None
 
         def execute(self, sql: str, params: tuple = ()):
             adapted = _adapt_sql(sql)
-            return self._cursor.execute(adapted, params)
+            try:
+                return self._cursor.execute(adapted, params)
+            except Exception:
+                self._conn.rollback()
+                raise
 
         def executemany(self, sql: str, seq_of_params):
             adapted = _adapt_sql(sql)
-            return self._cursor.executemany(adapted, seq_of_params)
+            try:
+                return self._cursor.executemany(adapted, seq_of_params)
+            except Exception:
+                self._conn.rollback()
+                raise
 
         def fetchone(self):
             row = self._cursor.fetchone()
@@ -120,7 +128,7 @@ def _make_pg_cursor(pg_conn):
             return _DictRow(self._cursor.description, row)
 
         def fetchall(self):
-            return [self._DictRow(self._cursor.description, r) for r in self._cursor.fetchall()]
+            return [_DictRow(self._cursor.description, r) for r in self._cursor.fetchall()]
 
         @property
         def description(self):
@@ -147,34 +155,33 @@ def _make_pg_cursor(pg_conn):
         def __contains__(self, key):
             return key in self._map
 
-    return _DictCursor(pg_conn)
+    return conn, _DictCursor(conn)
 
 
 class _PgConnection:
     """
-    PostgreSQL connection wrapper that mimics sqlite3.Connection interface.
-    Usage in code stays identical: conn = get_db(path); cursor = conn.cursor().
+    PostgreSQL connection wrapper that creates a fresh connection per request.
+    Each get_db() call → new connection → avoids stale/aborted transactions.
     """
     def __init__(self, pg_url: str):
-        import psycopg2
-        from psycopg2 import pool
-        raw = pg_url.replace("postgresql://", "postgres://")
-        self._pool = pool.ThreadedConnectionPool(minconn=1, maxconn=5, dsn=raw, connect_timeout=10)
-        self._thread_conn: Optional[Any] = None
+        self._url = pg_url
+        self._conn, self._cursor = _pg_connect(pg_url)
 
     def cursor(self):
-        if self._thread_conn is None:
-            self._thread_conn = self._pool.getconn()
-        return _make_pg_cursor(self._thread_conn)
+        return self._cursor
 
     def commit(self):
-        if self._thread_conn:
-            self._thread_conn.commit()
+        try:
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
 
     def close(self):
-        if self._thread_conn:
-            self._pool.putconn(self._thread_conn)
-            self._thread_conn = None
+        try:
+            self._conn.close()
+        except Exception:
+            pass
 
 
 # ─── get_db / get_db_path ────────────────────────────────────────────────────
@@ -1283,128 +1290,122 @@ SUPPLIERS_SEED = [
 
 
 def init_db(db_path: str) -> None:
-    """
-    Create tables and seed data if empty.
-    PostgreSQL: DDL runs in AUTOCOMMIT mode to avoid transaction-abort issues.
-    SQLite: standard transaction management.
-    """
+    """Create tables and seed data if empty. Handles existing DB upgrades."""
     conn = get_db(db_path)
+    cursor = conn.cursor()
 
+    # ── Create schema ──────────────────────────────────────────────────────────
     if _is_postgres():
-        # ── PostgreSQL DDL in AUTOCOMMIT mode ──────────────────────────────────
-        pg_conn = conn._thread_conn
-        old_isolation = pg_conn.isolation_level
-        pg_conn.set_session(isolation_level="AUTOCOMMIT")
-        try:
-            for stmt in SCHEMA_PG.strip().split(";"):
-                stmt = stmt.strip()
-                if stmt:
-                    cur = conn.cursor()
-                    cur.execute(stmt)
-        finally:
-            pg_conn.set_session(isolation_level=old_isolation)
-
-        # Migration: add missing columns using information_schema (no IF NOT EXISTS needed)
-        try:
-            for col, dtype in [
-                ("password_hash", "TEXT"),
-                ("is_admin",      "INTEGER DEFAULT 0"),
-                ("is_active",     "INTEGER DEFAULT 1"),
-            ]:
-                cur = conn.cursor()
-                cur.execute(
-                    "SELECT 1 FROM information_schema.columns "
-                    "WHERE table_name='users' AND column_name=%s",
-                    (col,)
-                )
-                if cur.fetchone() is None:
-                    conn.cursor().execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
-        except Exception:
-            pass
+        # PostgreSQL: split by ';' and execute each statement separately
+        for stmt in SCHEMA_PG.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                cursor.execute(stmt)
     else:
-        # SQLite: all DDL in one transaction
-        conn.cursor().executescript(SCHEMA_SQL)
+        cursor.executescript(SCHEMA_SQL)
     conn.commit()
 
-    # ── Helpers (always run in normal transaction mode) ───────────────────────
+    # ── Migration: add missing columns to existing users table ─────────────────
+    # PostgreSQL DDL can leave a transaction aborted on error.
+    # Strategy: execute each ALTER in its own mini-transaction via ROLLBACK on failure.
+    _pg_migrations = [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
+    ]
+    if _is_postgres():
+        for alter_sql in _pg_migrations:
+            try:
+                cursor.execute(alter_sql)
+                conn.commit()
+            except Exception:
+                conn.rollback()
+    else:
+        for alter_sql in _pg_migrations:
+            try:
+                cursor.execute(alter_sql)
+            except Exception:
+                pass
 
-    def upsert_many(table: str, values: list, insert_sql: str):
-        """Insert many rows; PostgreSQL uses ON CONFLICT DO NOTHING."""
+    # ── Helper: insert-or-do-nothing (works for both drivers) ─────────────────
+    def upsert_many(table: str, cols: str, values: list, insert_sql: str, update_sql: str = ""):
+        """Insert many rows; for PostgreSQL uses ON CONFLICT DO NOTHING."""
         if _is_postgres():
-            sql = insert_sql.replace("VALUES", "ON CONFLICT DO NOTHING VALUES", 1)
+            on_conflict = f"ON CONFLICT DO NOTHING"
+            final_sql = insert_sql.replace("VALUES", f"{on_conflict} VALUES", 1)
         else:
-            sql = insert_sql.replace("INSERT INTO", "INSERT OR IGNORE INTO", 1)
+            final_sql = insert_sql.replace("INSERT INTO", "INSERT OR IGNORE INTO", 1)
         try:
-            conn.cursor().executemany(sql, values)
+            cursor.executemany(final_sql, values)
         except Exception:
             pass
 
-    def force_insert(table: str, values: list, insert_sql: str):
-        """Delete all rows then insert fresh (for force-reseed tables)."""
+    def force_upsert_many(table: str, values: list, insert_sql: str):
+        """Delete all then insert. Works for both drivers."""
         try:
-            conn.cursor().execute(f"DELETE FROM {table}")
-            conn.cursor().executemany(insert_sql, values)
+            cursor.execute(f"DELETE FROM {table}")
+            cursor.executemany(insert_sql, values)
         except Exception:
             pass
-
-    cur = conn.cursor()
 
     # ── Seed countries ─────────────────────────────────────────────────────────
-    cur.execute("SELECT COUNT(*) FROM africa_countries")
-    if cur.fetchone()[0] == 0:
+    cursor.execute("SELECT COUNT(*) FROM africa_countries")
+    if cursor.fetchone()[0] == 0:
         upsert_many(
-            "africa_countries", AFRICA_COUNTRIES,
+            "africa_countries",
+            "(code, name_zh, name_en, in_afcfta, has_epa)",
+            AFRICA_COUNTRIES,
             "INSERT INTO africa_countries (code, name_zh, name_en, in_afcfta, has_epa) VALUES (?, ?, ?, ?, ?)",
         )
 
     # ── Seed HS codes ──────────────────────────────────────────────────────────
-    cur.execute("SELECT COUNT(*) FROM hs_codes")
-    if cur.fetchone()[0] == 0:
+    cursor.execute("SELECT COUNT(*) FROM hs_codes")
+    if cursor.fetchone()[0] == 0:
         upsert_many(
-            "hs_codes", HS_CODES_SEED,
+            "hs_codes", "", HS_CODES_SEED,
             "INSERT INTO hs_codes (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        force_insert(
+        force_upsert_many(
             "hs_codes", HS_CODES_SEED,
             "INSERT INTO hs_codes (hs_4, hs_6, hs_8, hs_10, name_zh, name_en, mfn_rate, vat_rate, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
     # ── Seed freight routes ────────────────────────────────────────────────────
-    cur.execute("SELECT COUNT(*) FROM freight_routes")
-    if cur.fetchone()[0] == 0:
+    cursor.execute("SELECT COUNT(*) FROM freight_routes")
+    if cursor.fetchone()[0] == 0:
         upsert_many(
-            "freight_routes", FREIGHT_ROUTES_SEED,
+            "freight_routes", "", FREIGHT_ROUTES_SEED,
             "INSERT INTO freight_routes (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh, transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        force_insert(
+        force_upsert_many(
             "freight_routes", FREIGHT_ROUTES_SEED,
             "INSERT INTO freight_routes (origin_country, origin_port, origin_port_zh, dest_port, dest_port_zh, transport_type, cost_min_usd, cost_max_usd, transit_days_min, transit_days_max, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
     # ── Seed certificate guides ───────────────────────────────────────────────
-    cur.execute("SELECT COUNT(*) FROM cert_guides")
-    if cur.fetchone()[0] == 0:
+    cursor.execute("SELECT COUNT(*) FROM cert_guides")
+    if cursor.fetchone()[0] == 0:
         upsert_many(
-            "cert_guides", CERT_GUIDES_SEED,
+            "cert_guides", "", CERT_GUIDES_SEED,
             "INSERT INTO cert_guides (country_code, country_name_zh, cert_type, issuing_authority, issuing_authority_zh, website_url, fee_usd_min, fee_usd_max, days_min, days_max, doc_requirements, step_sequence, api_available, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        force_insert(
+        force_upsert_many(
             "cert_guides", CERT_GUIDES_SEED,
             "INSERT INTO cert_guides (country_code, country_name_zh, cert_type, issuing_authority, issuing_authority_zh, website_url, fee_usd_min, fee_usd_max, days_min, days_max, doc_requirements, step_sequence, api_available, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
 
     # ── Seed suppliers ─────────────────────────────────────────────────────────
-    cur.execute("SELECT COUNT(*) FROM suppliers")
-    if cur.fetchone()[0] == 0:
+    cursor.execute("SELECT COUNT(*) FROM suppliers")
+    if cursor.fetchone()[0] == 0:
         upsert_many(
-            "suppliers", SUPPLIERS_SEED,
+            "suppliers", "", SUPPLIERS_SEED,
             "INSERT INTO suppliers (name_zh, name_en, country, region, main_products, main_hs_codes, contact_email, min_order_kg, payment_terms, export_years, verified_chamber, status, intro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
     else:
-        force_insert(
+        force_upsert_many(
             "suppliers", SUPPLIERS_SEED,
             "INSERT INTO suppliers (name_zh, name_en, country, region, main_products, main_hs_codes, contact_email, min_order_kg, payment_terms, export_years, verified_chamber, status, intro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
