@@ -1416,13 +1416,11 @@ def init_db(db_path: str) -> None:
         """Delete all then insert. Converts placeholders for PostgreSQL."""
         try:
             pg_sql = _to_pg_sql(insert_sql)
-            print(f"[DEBUG] force_seed: {table}, sql={pg_sql[:80]}...")
             cursor.execute(f"DELETE FROM {table}")
             cursor.executemany(pg_sql, values)
-            print(f"[DEBUG] force_seed: inserted {len(values)} rows into {table}")
         except Exception as e:
             print(f"[ERROR] force_seed failed for {table}: {e}")
-            raise  # Re-raise to see actual error
+            raise
 
     # ── Seed countries ─────────────────────────────────────────────────────────
     force_seed(
