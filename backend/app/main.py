@@ -16,6 +16,7 @@ from app.routers.admin import router as admin_router
 from app.routers.freight import router as freight_router
 from app.routers.certificate import router as certificate_router
 from app.routers.suppliers import router as suppliers_router
+from app.routers.market_analysis import router as market_analysis_router
 
 load_dotenv()
 
@@ -68,6 +69,7 @@ app.include_router(admin_router, prefix="/api/v1", tags=["管理后台"])
 app.include_router(freight_router, prefix="/api/v1", tags=["物流成本估算"])
 app.include_router(certificate_router, prefix="/api/v1", tags=["原产地证书办理"])
 app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
+app.include_router(market_analysis_router, prefix="/api/v1", tags=["市场选品分析"])
 
 
 @app.get("/health")
@@ -99,6 +101,7 @@ def debug_db_status():
             "freight_routes": count_table("freight_routes"),
             "cert_guides": count_table("cert_guides"),
             "suppliers": count_table("suppliers"),
+            "market_analysis": count_table("market_analysis"),
             "users": count_table("users"),
         }
     }
@@ -159,6 +162,7 @@ def debug_export_all_data():
             "freight_routes": get_table("freight_routes"),
             "cert_guides": get_table("cert_guides"),
             "suppliers": get_table("suppliers"),
+            "market_analysis": get_table("market_analysis"),
         }
     finally:
         conn.close()

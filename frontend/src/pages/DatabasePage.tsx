@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../hooks/useAppStore'
-import axios from 'axios'
-
-const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+import { api } from '../utils/api'
 
 interface TableStats {
   table_name: string
@@ -56,6 +54,7 @@ interface HSCodeRecord {
   mfn_rate: number
   vat_rate: number
   category: string | null
+  zero_tariff?: boolean
 }
 
 interface FreightRouteRecord {
@@ -136,11 +135,11 @@ export default function DatabasePage() {
     setLoading(true)
     try {
       const [suppliersRes, countriesRes, hsRes, freightRes, certRes] = await Promise.allSettled([
-        axios.get(`${API_BASE}/api/v1/suppliers?page=1&page_size=500`),
-        axios.get(`${API_BASE}/api/v1/countries`),
-        axios.get(`${API_BASE}/api/v1/hs-codes/search?q=a&limit=500`),
-        axios.get(`${API_BASE}/api/v1/freight/routes`),
-        axios.get(`${API_BASE}/api/v1/certificate/guides`),
+        api.get('/suppliers', { params: { page: 1, page_size: 50 } }),
+        api.get('/countries'),
+        api.get('/hs-codes/search', { params: { q: 'a', limit: 50 } }),
+        api.get('/freight/routes'),
+        api.get('/certificate/guides'),
       ])
 
       if (suppliersRes.status === 'fulfilled') {
@@ -183,7 +182,7 @@ export default function DatabasePage() {
     setSyncMsg('正在同步数据到 Neon...')
     try {
       // Re-init DB to ensure latest seed data
-      await axios.post(`${API_BASE}/debug/reinit-db`)
+      await api.post('/debug/reinit-db')
       setSyncMsg('同步完成！')
       await loadAllData()
     } catch (e) {

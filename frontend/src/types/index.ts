@@ -430,6 +430,7 @@ export interface Supplier {
   region?: string
   main_products: string[]
   main_hs_codes: string[]
+  contact_name?: string
   contact_email?: string
   contact_phone?: string
   website?: string

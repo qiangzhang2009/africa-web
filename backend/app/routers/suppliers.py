@@ -112,6 +112,7 @@ def _supplier_row_to_model(r: dict) -> dict:
         "region": r["region"],
         "main_products": _parse_list_field(r["main_products"]),
         "main_hs_codes": _parse_list_field(r["main_hs_codes"]),
+        "contact_name": r["contact_name"],
         "contact_email": r["contact_email"],
         "contact_phone": r["contact_phone"],
         "website": r["website"],
@@ -147,6 +148,43 @@ def _supplier_to_list_item(r: dict) -> dict:
     }
 
 
+def _supplier_to_admin_item(r) -> dict:
+    """Convert a raw supplier row to admin view (all fields).
+    Supports both dict (PostgreSQL) and sqlite3.Row (SQLite).
+    """
+    def g(key, default=None):
+        try:
+            return r[key]
+        except (KeyError, IndexError, TypeError):
+            return default
+
+    return {
+        "id": g("id"),
+        "name_zh": g("name_zh"),
+        "name_en": g("name_en"),
+        "country": g("country"),
+        "region": g("region"),
+        "main_products": g("main_products", ""),
+        "main_hs_codes": g("main_hs_codes", ""),
+        "contact_email": g("contact_email"),
+        "contact_name": g("contact_name"),
+        "contact_phone": g("contact_phone"),
+        "website": g("website"),
+        "min_order_kg": g("min_order_kg"),
+        "payment_terms": g("payment_terms"),
+        "export_years": g("export_years", 0),
+        "annual_export_tons": g("annual_export_tons"),
+        "verified_chamber": g("verified_chamber", 0),
+        "verified_实地拜访": g("verified_实地拜访", 0),
+        "verified_sgs": g("verified_sgs", 0),
+        "rating_avg": g("rating_avg", 0.0),
+        "review_count": g("review_count", 0),
+        "status": g("status"),
+        "intro": g("intro"),
+        "certifications": g("certifications"),
+    }
+
+
 # ─── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("/suppliers")
@@ -157,9 +195,11 @@ async def search_suppliers(
     verified_only: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
+    admin: bool = Query(False, description="管理员视图：返回完整字段包括联系方式"),
 ):
     """
     Search and filter suppliers.
+    Set admin=true to return all fields including contact info (for admin panel).
     """
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
@@ -176,11 +216,11 @@ async def search_suppliers(
         count_params.append(country.upper())
 
     if keyword:
-        sql += " AND (name_zh LIKE ? OR name_en LIKE ? OR main_products LIKE ?)"
-        count_sql += " AND (name_zh LIKE ? OR name_en LIKE ? OR main_products LIKE ?)"
+        sql += " AND (name_zh LIKE ? OR name_en LIKE ? OR main_products LIKE ? OR contact_email LIKE ?)"
+        count_sql += " AND (name_zh LIKE ? OR name_en LIKE ? OR main_products LIKE ? OR contact_email LIKE ?)"
         like_kw = f"%{keyword}%"
-        params.extend([like_kw, like_kw, like_kw])
-        count_params.extend([like_kw, like_kw, like_kw])
+        params.extend([like_kw, like_kw, like_kw, like_kw])
+        count_params.extend([like_kw, like_kw, like_kw, like_kw])
 
     if hs_code:
         sql += " AND main_hs_codes LIKE ?"
@@ -204,8 +244,9 @@ async def search_suppliers(
     rows = cursor.fetchall()
     conn.close()
 
+    converter = _supplier_to_admin_item if admin else _supplier_to_list_item
     return {
-        "suppliers": [_supplier_to_list_item(r) for r in rows],
+        "suppliers": [converter(r) for r in rows],
         "total": total,
         "page": page,
         "page_size": page_size,

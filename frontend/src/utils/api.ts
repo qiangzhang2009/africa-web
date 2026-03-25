@@ -39,7 +39,7 @@ import type {
 // ─── API Base URL ─────────────────────────────────────────────────────────────
 const BASE_URL = import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? '/api' : '')
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },

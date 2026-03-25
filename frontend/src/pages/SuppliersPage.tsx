@@ -117,7 +117,7 @@ function SupplierDetail({
   const [compare, setCompare] = useState<SupplierCompareResult | null>(null)
   const [reviews, setReviews] = useState<SupplierReview[]>([])
   const [showContact, setShowContact] = useState(false)
-  const { isLoggedIn, tier } = useAppStore()
+  const { isLoggedIn } = useAppStore()
 
   useEffect(() => {
     getSupplierCompare(supplier.id).then(setCompare).catch(() => {})
@@ -244,11 +244,17 @@ function SupplierDetail({
           )}
 
           {/* Contact */}
-          {(isLoggedIn && tier !== 'free') ? (
+          {isLoggedIn ? (
             showContact ? (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
                 <div className="text-sm font-semibold text-green-800 mb-3">联系方式</div>
                 <div className="space-y-2">
+                  {supplier.contact_name && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-slate-500 w-16">联系人：</span>
+                      <span className="text-slate-800">{supplier.contact_name}</span>
+                    </div>
+                  )}
                   {supplier.contact_email && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="text-slate-500 w-16">邮箱：</span>
@@ -269,6 +275,9 @@ function SupplierDetail({
                       </a>
                     </div>
                   )}
+                  {!supplier.contact_name && !supplier.contact_email && !supplier.contact_phone && !supplier.website && (
+                    <div className="text-sm text-slate-500">暂无联系方式信息</div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -276,25 +285,16 @@ function SupplierDetail({
                 onClick={() => setShowContact(true)}
                 className="w-full py-3 border-2 border-dashed border-green-300 text-green-600 rounded-xl hover:bg-green-50 transition-colors font-medium mb-6"
               >
-                查看联系方式（Pro专属）
+                查看联系方式
               </button>
             )
           ) : (
-            !isLoggedIn ? (
-              <button
-                onClick={() => navigate('/login?redirect=/suppliers')}
-                className="w-full py-3 border-2 border-dashed border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium mb-6"
-              >
-                登录后查看联系方式
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate('/pricing')}
-                className="w-full py-3 border-2 border-dashed border-amber-300 text-amber-600 rounded-xl hover:bg-amber-50 transition-colors font-medium mb-6"
-              >
-                升级Pro后查看联系方式
-              </button>
-            )
+            <button
+              onClick={() => navigate('/login?redirect=/suppliers')}
+              className="w-full py-3 border-2 border-dashed border-slate-300 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium mb-6"
+            >
+              登录后查看联系方式
+            </button>
           )}
 
           {/* Reviews */}

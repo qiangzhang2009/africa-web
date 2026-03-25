@@ -332,6 +332,32 @@ class SupplierListItem(BaseModel):
     min_order_kg: Optional[float]
 
 
+class AdminSupplierItem(BaseModel):
+    """Full supplier record for admin view — includes contact info."""
+    id: int
+    name_zh: str
+    name_en: Optional[str]
+    country: str
+    region: Optional[str]
+    main_products: str
+    main_hs_codes: str
+    contact_email: Optional[str]
+    contact_phone: Optional[str]
+    website: Optional[str]
+    min_order_kg: Optional[float]
+    payment_terms: Optional[str]
+    export_years: int
+    annual_export_tons: Optional[float]
+    verified_chamber: int
+    verified_实地拜访: int
+    verified_sgs: int
+    rating_avg: float
+    review_count: int
+    status: str
+    intro: Optional[str]
+    certifications: Optional[str]
+
+
 class SupplierSearchResult(BaseModel):
     suppliers: list[SupplierListItem]
     total: int
