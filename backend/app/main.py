@@ -93,6 +93,91 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
+@app.get("/debug/calc-tariff")
+def debug_calc_tariff():
+    """Debug tariff calculation."""
+    import traceback, json
+    from app.services import tariff as tariff_service
+    from app.models.database import get_db_path, get_db
+    try:
+        result = tariff_service.calculate_tariff(
+            hs_code="0901",
+            origin_country="ET",
+            destination="CN",
+            fob_value=240,
+            db_path=get_db_path(),
+        )
+        bd = result.get("breakdown", {})
+        total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
+        json_str = json.dumps(result)
+        conn = get_db(get_db_path())
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (1, "咖啡豆", "0901", "ET", "CN", 240, json_str, total_val)
+        )
+        conn.commit()
+        conn.close()
+        return {"success": True, "total": total_val}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
+
+
+@app.get("/debug/calc-import")
+def debug_calc_import():
+    """Debug import cost calculation."""
+    import traceback, json
+    from app.services import tariff as tariff_service
+    from app.models.database import get_db_path, get_db
+    try:
+        result = tariff_service.calculate_import_cost(
+            product_name="咖啡生豆",
+            quantity_kg=30,
+            fob_per_kg=8,
+            origin="ET",
+            db_path=get_db_path(),
+        )
+        bd = result.get("breakdown")
+        if bd and hasattr(bd, "model_dump"):
+            bd_dict = bd.model_dump()
+        else:
+            bd_dict = bd or {}
+        total_val = bd_dict.get("total_cost") or 0
+        serializable = dict(result)
+        serializable["breakdown"] = bd_dict
+        json_str = json.dumps(serializable)
+        conn = get_db(get_db_path())
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (1, "咖啡生豆", None, "ET", "CN", bd_dict.get("fob_value") or 0, json_str, total_val)
+        )
+        conn.commit()
+        conn.close()
+        return {"success": True, "total": total_val, "result_keys": list(result.keys())}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
+
+
+@app.get("/debug/calc-outer")
+def debug_calc_outer():
+    """Debug the OUTER calculator router function."""
+    import traceback, json
+    from app.models.database import get_db_path, get_db, get_db as _get_db
+    try:
+        # Step 1: get tariff result
+        from app.services import tariff as tariff_service
+        result = tariff_service.calculate_tariff(
+            hs_code="0901", origin_country="ET", destination="CN",
+            fob_value=240, db_path=get_db_path(),
+        )
+        # Step 2: json.dumps
+        json_str = json.dumps(result)
+        return {"step1": "tariff ok", "step2": "json ok", "keys": list(result.keys())}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
