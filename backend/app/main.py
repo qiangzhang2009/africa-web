@@ -124,11 +124,17 @@ def debug_subscribe_status():
 def debug_calc_check():
     """Debug tariff calculation."""
     import traceback
-    from app.routers.calculator import _check_and_record_calculation
+    from app.services import tariff as tariff_service
     from app.models.database import get_db_path
     try:
-        allowed, used, remaining = _check_and_record_calculation(1, get_db_path())
-        return {"step": "success", "allowed": allowed, "used": used, "remaining": remaining}
+        result = tariff_service.calculate_import_cost(
+            product_name="咖啡生豆",
+            quantity_kg=30,
+            fob_per_kg=8,
+            origin="ET",
+            db_path=get_db_path(),
+        )
+        return {"step": "success", "result": str(result)[:500]}
     except Exception as e:
         return {
             "error": str(e),
