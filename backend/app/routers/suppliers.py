@@ -219,28 +219,30 @@ async def list_supplier_countries():
     """
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute(
-        """SELECT s.country, ac.name_zh, ac.name_en,
-                  COUNT(*) as supplier_count,
-                  SUM(CASE WHEN s.verified_chamber = 1 THEN 1 ELSE 0 END) as verified_count
-           FROM suppliers s
-           LEFT JOIN africa_countries ac ON ac.code = s.country
-           WHERE s.status != 'blocked'
-           GROUP BY s.country
-           ORDER BY supplier_count DESC"""
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [
-        {
-            "code": r["country"],
-            "name_zh": r["name_zh"] or r["country"],
-            "name_en": r["name_en"],
-            "supplier_count": r["supplier_count"],
-            "verified_count": r["verified_count"],
-        }
-        for r in rows
-    ]
+    try:
+        cursor.execute(
+            """SELECT s.country, ac.name_zh, ac.name_en,
+                      COUNT(*) as supplier_count,
+                      SUM(CASE WHEN s.verified_chamber = 1 THEN 1 ELSE 0 END) as verified_count
+               FROM suppliers s
+               LEFT JOIN africa_countries ac ON ac.code = s.country
+               WHERE s.status != 'blocked'
+               GROUP BY s.country, ac.name_zh, ac.name_en
+               ORDER BY supplier_count DESC"""
+        )
+        rows = cursor.fetchall()
+        return [
+            {
+                "code": r["country"],
+                "name_zh": r["name_zh"] or r["country"],
+                "name_en": r["name_en"],
+                "supplier_count": r["supplier_count"],
+                "verified_count": r["verified_count"],
+            }
+            for r in rows
+        ]
+    finally:
+        conn.close()
 
 
 @router.get("/suppliers/categories")
