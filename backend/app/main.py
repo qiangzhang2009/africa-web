@@ -93,33 +93,34 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
-@app.get("/debug/calc-record")
-def debug_calc_record():
-    """Test the calculation INSERT to verify json.dumps fix."""
+@app.get("/debug/calc-tariff")
+def debug_calc_tariff():
+    """Test the tariff calculation path."""
     import traceback, json
-    from app.models.database import get_db, get_db_path
+    from app.services import tariff as tariff_service
+    from app.models.database import get_db_path, get_db
     try:
+        result = tariff_service.calculate_tariff(
+            hs_code="0901",
+            origin_country="ET",
+            destination="CN",
+            fob_value=240,
+            db_path=get_db_path(),
+        )
+        # Serialize for JSON
+        result_str = json.dumps(result)
+        # Insert
+        bd = result.get("breakdown", {})
+        total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
         conn = get_db(get_db_path())
         cursor = conn.cursor()
-        # Test with a sample Pydantic-like object
-        sample_result = {
-            "success": True,
-            "message": "测试",
-            "breakdown": {"total_cost": 1234.56, "fob_value": 500.0},
-            "input": {"product_name": "咖啡"},
-        }
-        # This simulates what the calculator does
-        bd = sample_result.get("breakdown", {})
-        total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
-        fob_cny = bd.get("fob_value", 0) if isinstance(bd, dict) else 0
         cursor.execute(
             "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (1, "咖啡", None, "ET", "CN", fob_cny, json.dumps(sample_result), total_val)
+            (1, "咖啡豆", "0901", "ET", "CN", 240, result_str, total_val)
         )
         conn.commit()
-        last_id = cursor.fetchone()
         conn.close()
-        return {"step": "success", "insert_id": last_id}
+        return {"step": "success", "total": total_val, "result_keys": list(result.keys())}
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
 
