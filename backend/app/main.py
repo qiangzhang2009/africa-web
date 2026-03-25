@@ -93,52 +93,6 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
-@app.get("/debug/subscribe-info")
-def debug_subscribe_info():
-    """Debug subscription info."""
-    import traceback
-    from app.routers.subscription import _get_user_subscription_info
-    try:
-        info = _get_user_subscription_info(1)
-        return {"success": True, "info": str(info)[:500]}
-    except Exception as e:
-        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
-
-@app.get("/debug/subscribe-status")
-def debug_subscribe_status():
-    """Debug subscription status endpoint."""
-    import traceback
-    from app.routers.subscription import _get_user_subscription_info
-    try:
-        result = _get_user_subscription_info(1)
-        return {"step": "success", "data": result}
-    except Exception as e:
-        return {
-            "error": str(e),
-            "type": type(e).__name__,
-            "traceback": traceback.format_exc(),
-        }
-
-
-@app.get("/debug/calc-insert")
-def debug_calc_insert():
-    """Debug the calculation INSERT in calculator.py."""
-    import traceback, json
-    from app.models.database import get_db, get_db_path, sql_now_datetime
-    try:
-        conn = get_db(get_db_path())
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, " + sql_now_datetime() + ")",
-            (1, "咖啡生豆", None, "ET", "CN", 240, json.dumps({"success": True}),)
-        )
-        conn.commit()
-        conn.close()
-        return {"step": "success", "sql_now_datetime": sql_now_datetime()}
-    except Exception as e:
-        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
-
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
