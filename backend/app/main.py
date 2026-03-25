@@ -93,6 +93,39 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
+@app.get("/debug/subscribe-status")
+def debug_subscribe_status():
+    """Debug subscription status endpoint."""
+    import traceback
+    from app.routers.subscription import _get_user_subscription_info
+    try:
+        result = _get_user_subscription_info(1)
+        return {"step": "success", "data": result}
+    except Exception as e:
+        return {
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+
+
+@app.get("/debug/calc-check")
+def debug_calc_check():
+    """Debug tariff calculation."""
+    import traceback
+    from app.routers.calculator import _check_and_record_calculation
+    from app.models.database import get_db_path
+    try:
+        allowed, used, remaining = _check_and_record_calculation(1, get_db_path())
+        return {"step": "success", "allowed": allowed, "used": used, "remaining": remaining}
+    except Exception as e:
+        return {
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc(),
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
