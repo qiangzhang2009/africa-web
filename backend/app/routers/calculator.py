@@ -180,22 +180,26 @@ async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(
     # Record successful import-cost calculation for quota tracking consistency.
     if user_id and result.get("success"):
         breakdown = result.get("breakdown")
-        serializable_result = result
         if breakdown is not None and hasattr(breakdown, "model_dump"):
-            serializable_result = {**result, "breakdown": breakdown.model_dump()}
+            breakdown_dict = breakdown.model_dump()
+        else:
+            breakdown_dict = breakdown or {}
 
         conn = get_db(DB_PATH)
         cursor = conn.cursor()
+        total_val = breakdown_dict.get("total_cost") or 0
+        fob_cny = breakdown_dict.get("fob_value") or 0
         cursor.execute(
-            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 user_id,
                 input.product_name,
                 None,
                 input.origin,
                 input.destination,
-                input.quantity_kg * input.fob_per_kg,
-                json.dumps(serializable_result),
+                fob_cny,
+                json.dumps(result),
+                total_val,
             ),
         )
         conn.commit()
