@@ -1041,289 +1041,107 @@ CERT_GUIDES_SEED = [
 ]
 
 
-# ─── Seed data: Supplier database (Phase 1 - seed suppliers) ──────────────────
+# ─── Seed data: Supplier database (Phase 2 - Expanded) ────────────────────────
+# 覆盖 30+ 非洲国家，70+ 品类的高质量供应商
 # (name_zh, name_en, country, region, products, hs_codes, contact_email, min_kg, payment, export_years, verified_chamber, status, intro)
 SUPPLIERS_SEED = [
-    (
-        "耶加雪菲咖啡出口商合作社",
-        "Yirgacheffe Coffee Farmers Cooperative Union",
-        "ET", "Yirgacheffe, Gedeo Zone",
-        "水洗咖啡豆|日晒咖啡豆|耶加雪菲产区生豆",
-        "0901.11",
-        "export@yirgacheffe-coffee.et",
-        500,
-        "L/C, T/T",
-        4,
-        1,
-        "verified",
-        "埃塞俄比亚耶加雪菲产区最大合作社之一，专注精品水洗豆，年出口量约300吨，主要市场日本、欧美，近年开拓中国市场。"
-    ),
-    (
-        "科契尔产区咖啡公司",
-        "Kochere Coffee Producer Company",
-        "ET", "Kochere, SNNPR",
-        "科契尔水洗豆|精品咖啡|有机认证咖啡",
-        "0901.11",
-        "info@kochere-coffee.et",
-        200,
-        "T/T, L/C",
-        3,
-        1,
-        "verified",
-        "位于耶加雪菲产区南部科契尔区，专注高海拔精品豆，有机认证，适合高端电商渠道。"
-    ),
-    (
-        "西达摩产区出口商",
-        "Sidama Coffee Farmers Cooperative",
-        "ET", "Sidama Zone, Hawassa",
-        "西达摩水洗豆|日晒耶加|拼配咖啡豆",
-        "0901.11",
-        "sales@sidama-coffee.et",
-        1000,
-        "L/C, T/T",
-        2,
-        1,
-        "verified",
-        "西达摩是埃塞俄比亚最重要的咖啡产区之一，产量大、品质稳定，适合电商大批量采购。"
-    ),
-    (
-        "蒙巴萨坚果与农产品出口公司",
-        "Mombasa Nuts & Agricultural Exports Ltd",
-        "KE", "Mombasa, Coast Province",
-        "腰果|去壳腰果|烘焙腰果",
-        "0801.32",
-        "exports@mombasa-nuts.co.ke",
-        1000,
-        "T/T",
-        5,
-        1,
-        "verified",
-        "肯尼亚蒙巴萨最大的腰果出口商之一，和西非竞争有地理优势，适合食品加工企业采购。"
-    ),
-    (
-        "坦桑尼亚芝麻出口公司",
-        "Tanzania Sesame Exports Co.",
-        "TZ", "Shinyanga Region",
-        "白芝麻|黑芝麻|有机芝麻",
-        "1207.40",
-        "info@tz-sesame.co.tz",
-        5000,
-        "T/T, L/C",
-        3,
-        1,
-        "verified",
-        "坦桑尼亚是全球最大芝麻生产国之一，年产约12万吨，该公司专注有机认证芝麻，主要出口中国和印度。"
-    ),
-    (
-        "加纳可可与巧克力出口公司",
-        "Ghana Cocoa & Chocolate Exporters Ltd",
-        "GH", "Ashanti Region, Kumasi",
-        "可可豆|可可脂|可可液块",
-        "1801.00, 1803.10, 1804.00",
-        "export@ghana-cocoa.gh",
-        2000,
-        "L/C, T/T",
-        6,
-        1,
-        "verified",
-        "加纳是全球第二大可可生产国，该公司直接与可可局（ Cocobod）合作，保证品质和溯源，适合巧克力工厂采购。"
-    ),
-    (
-        "科特迪瓦可可出口集团",
-        "Côte d'Ivoire Cocoa Export Group",
-        "CI", "Abidjan, Soubré",
-        "可可豆|可可饼|可可粉",
-        "1801.00, 1805.00",
-        "ventes@civ-cocoa.ci",
-        3000,
-        "L/C",
-        4,
-        1,
-        "verified",
-        "科特迪瓦是全球最大可可生产国，该公司供应各等级可可豆，价格有竞争力，适合大宗采购。"
-    ),
-    (
-        "南非矿业出口公司",
-        "South Africa Minerals & Mining Export (Pty) Ltd",
-        "ZA", "Johannesburg, Northern Cape",
-        "锰矿精矿|铁矿砂|铬矿",
-        "2602.00, 2603.00, 2610.00",
-        "exports@sa-minerals.co.za",
-        100000,
-        "L/C",
-        10,
-        1,
-        "verified",
-        "南非最大矿业出口商之一，专业出口各类金属矿砂，有完善的检测报告体系（SGS/INTERTEK），适合钢铁厂和冶炼厂。"
-    ),
-    (
-        "摩洛哥橄榄油与坚果出口公司",
-        "Morocco Olive Oil & Nuts Export SARL",
-        "MA", "Meknes, Fes-Meknes",
-        "初榨橄榄油|去壳榛子|杏仁",
-        "1509.10, 0802.22",
-        "export@ma-olive-nuts.ma",
-        500,
-        "T/T, L/C",
-        3,
-        1,
-        "verified",
-        "摩洛哥是全球最大橄榄油生产国之一，该公司同时出口优质坚果，适合食品电商和礼品渠道。"
-    ),
-    (
-        "埃及棉纤维出口公司",
-        "Egyptian Cotton & Fiber Export Co.",
-        "EG", "Alexandria, Beheira Governorate",
-        "长绒棉|棉纤维|纱线",
-        "5201.00, 5203.00",
-        "trade@eg-cotton.com.eg",
-        10000,
-        "L/C",
-        8,
-        1,
-        "verified",
-        "埃及吉扎棉是全球最优质棉花之一，该公司直接与棉农合作，提供溯源证明，适合纺织企业。"
-    ),
-    (
-        "卢旺达高地茶出口公司",
-        "Rwanda Highlands Tea Exporters",
-        "RW", "Ruhengeri, Northern Province",
-        "红茶|绿茶|紫茶",
-        "0902.40",
-        "sales@rwanda-tea.rw",
-        500,
-        "T/T",
-        2,
-        1,
-        "verified",
-        "卢旺达高山茶以花香和果香著称，在欧美高端市场有口碑，适合精品茶电商和礼品采购。"
-    ),
-    (
-        "马达加斯加香草出口商",
-        "Madagascar Vanilla & Spices Export SARL",
-        "MG", "Sava Region, Toamasina",
-        "香草豆|丁香|依兰依兰精油",
-        "0905.00, 0907.00, 3301.29",
-        "export@mg-vanilla.mg",
-        100,
-        "T/T, L/C",
-        5,
-        1,
-        "verified",
-        "马达加斯加供应全球约80%的香草，该公司位于香草主产区萨瓦区，提供有机认证香草，适合食品和香水行业。"
-    ),
-    (
-        "毛里求斯蔗糖出口公司",
-        "Mauritius Sugar Export Corporation",
-        "MU", "Port Louis, Moka",
-        "有机蔗糖|红糖|糖浆",
-        "1701.13, 1701.14",
-        "trade@mu-sugar.mu",
-        5000,
-        "L/C, T/T",
-        7,
-        1,
-        "verified",
-        "毛里求斯甘蔗种植历史悠久，有机蔗糖在欧美市场有稳定需求，适合食品加工和零售电商。"
-    ),
-    (
-        "塞内加尔花生出口合作社",
-        "Senegal Groundnut Export Cooperative",
-        "SN", "Kaolack, Fatick",
-        "花生|花生油|花生酱原料",
-        "1202.30, 1508.10",
-        "coop@sn-groundnut.sn",
-        10000,
-        "T/T",
-        3,
-        1,
-        "verified",
-        "塞内加尔是西非最大花生生产国，该公司直接与合作社对接，价格竞争力强，适合榨油和食品加工。"
-    ),
-    (
-        "乌干达咖啡出口公司",
-        "Uganda Coffee Export Company Ltd",
-        "UG", "Kampala, Bugisu Region",
-        "阿拉比卡生豆|罗布斯塔|水洗豆",
-        "0901.11",
-        "export@ug-coffee.ug",
-        500,
-        "L/C, T/T",
-        4,
-        1,
-        "verified",
-        "乌干达咖啡豆品质优良，布吉苏产区（Bugisu）咖啡有PDO潜力，适合精品烘焙电商。"
-    ),
-    (
-        "吉布提港口物流与贸易公司",
-        "Djibouti Port Trade & Logistics Co.",
-        "DJ", "Djibouti City, Tadjourah",
-        "咖啡物流|芝麻|皮革原料",
-        "0901.11, 1207.40, 4101.20",
-        "trade@djibouti-port.dj",
-        1000,
-        "T/T",
-        6,
-        1,
-        "verified",
-        "吉布提是中国一带一路重要节点，该公司提供从埃塞俄比亚到吉布提港的全套物流清关服务，适合第一次从非洲进口的企业。"
-    ),
-    (
-        "尼日利亚可可出口公司",
-        "Nigeria Cocoa Export Company",
-        "NG", "Lagos, Cross River State",
-        "可可豆|可可脂|可可饼",
-        "1801.00, 1804.00",
-        "exports@ng-cocoa.ng",
-        5000,
-        "L/C",
-        2,
-        0,
-        "new",
-        "尼日利亚非洲最大人口国，可可产量全球第四，该公司近年开始开拓中国市场，提供SGS检测报告。"
-    ),
-    (
-        "赞比亚铜带矿业公司",
-        "Zambia Copperbelt Mining & Exports Ltd",
-        "ZM", "Kitwe, Copperbelt Province",
-        "铜矿砂|钴矿|锌矿",
-        "2603.00, 2605.00, 2608.00",
-        "sales@zm-copperbelt.zm",
-        50000,
-        "L/C",
-        8,
-        1,
-        "verified",
-        "赞比亚铜带省是全球重要铜矿区，该公司长期向中国出口矿砂，有长期合同经验，适合大型冶炼厂。"
-    ),
-    (
-        "贝宁棉花出口公司",
-        "Benin Cotton Exporters SARL",
-        "BJ", "Cotonou, Borgou",
-        "原棉|棉籽|棉纱",
-        "5201.00, 5203.00",
-        "export@bj-cotton.bj",
-        10000,
-        "T/T, L/C",
-        3,
-        1,
-        "verified",
-        "贝宁是西非重要棉花生产国，该公司与法国公司合作管理棉田，质量稳定，适合纺织企业。"
-    ),
-    (
-        "喀麦隆可可出口公司",
-        "Cameroon Cocoa Export SA",
-        "CM", "Douala, South Region",
-        "可可豆|可可脂|可可壳",
-        "1801.00, 1804.00",
-        "trade@cm-cocoa.cm",
-        2000,
-        "L/C",
-        2,
-        0,
-        "new",
-        "喀麦隆可可香气浓郁，适合精品巧克力生产，该公司位于杜阿拉港口城市，物流便利。"
-    ),
+    # ========== 埃塞俄比亚 - 咖啡 ==========
+    ("耶加雪菲咖啡出口商合作社","Yirgacheffe Coffee Farmers Cooperative Union","ET","Yirgacheffe, Gedeo Zone","水洗咖啡豆|日晒咖啡豆|耶加雪菲产区生豆","0901.11","export@yirgacheffe-coffee.et",500,"L/C, T/T",4,1,"verified","埃塞俄比亚耶加雪菲产区最大合作社之一，专注精品水洗豆，年出口量约300吨，主要市场日本、欧美，近年开拓中国市场。"),
+    ("科契尔产区咖啡公司","Kochere Coffee Producer Company","ET","Kochere, SNNPR","科契尔水洗豆|精品咖啡|有机认证咖啡","0901.11","info@kochere-coffee.et",200,"T/T, L/C",3,1,"verified","位于耶加雪菲产区南部科契尔区，专注高海拔精品豆，有机认证，适合高端电商渠道。"),
+    ("西达摩产区出口商","Sidama Coffee Farmers Cooperative","ET","Sidama Zone, Hawassa","西达摩水洗豆|日晒耶加|拼配咖啡豆","0901.11","sales@sidama-coffee.et",1000,"L/C, T/T",2,1,"verified","西达摩是埃塞俄比亚最重要的咖啡产区之一，产量大、品质稳定，适合电商大批量采购。"),
+    ("古吉产区精品咖啡出口","Guji Zone Specialty Coffee Exporters","ET","Guji Zone, Oromia","古吉精品咖啡|日晒豆|水洗豆","0901.11","export@guji-coffee.et",300,"T/T",2,1,"verified","古吉是埃塞新兴精品咖啡产区，以其独特的果香和复杂风味著称，适合精品咖啡烘焙商。"),
+    ("利姆产区咖啡合作社","Limu Coffee Farmers Union","ET","Limu, Oromia","利姆水洗豆|有机咖啡|精品咖啡","0901.11","info@limu-coffee.et",250,"T/T, L/C",3,1,"verified","利姆产区以生产高品质水洗咖啡闻名，口感平衡，酸度适中，适合意式拼配。"),
+    # ========== 肯尼亚 - 咖啡、坚果 ==========
+    ("肯尼亚咖啡委员会出口部","Kenya Coffee Directorate Export Division","KE","Nairobi, Central Province","肯尼亚AA|AB级咖啡|水洗咖啡豆","0901.11","exports@coffeeboard.or.ke",500,"L/C",5,1,"verified","肯尼亚官方咖啡机构代理，负责品质检验和出口协调，AA级豆享誉全球。"),
+    ("蒙巴萨坚果与农产品出口公司","Mombasa Nuts & Agricultural Exports Ltd","KE","Mombasa, Coast Province","腰果|去壳腰果|烘焙腰果","0801.32","exports@mombasa-nuts.co.ke",1000,"T/T",5,1,"verified","肯尼亚蒙巴萨最大的腰果出口商之一，和西非竞争有地理优势，适合食品加工企业采购。"),
+    ("肯尼亚山咖啡出口公司","Kenya Highlands Coffee Exporters Ltd","KE","Nyeri, Mount Kenya Region","肯尼亚AA|特级水洗豆|Nyeri产区","0901.11","sales@kenyahighlands.co.ke",200,"T/T, L/C",4,1,"verified","位于肯尼亚山脚下Nyyeri产区，以其明亮的果酸和复杂风味著称，是拍卖市场上最抢手的咖啡。"),
+    ("肯尼亚芝麻与油籽出口公司","Kenya Sesame & Oilseeds Export Ltd","KE","Kisumu, Western Kenya","白芝麻|黑芝麻|花生","1207.40","info@kenya-sesame.co.ke",5000,"T/T",3,1,"verified","肯尼亚西部是优质芝麻产区，适合有机认证产品出口，中国市场需求旺盛。"),
+    # ========== 坦桑尼亚 - 芝麻、咖啡、腰果 ==========
+    ("坦桑尼亚芝麻出口公司","Tanzania Sesame Exports Co.","TZ","Shinyanga Region","白芝麻|黑芝麻|有机芝麻","1207.40","info@tz-sesame.co.tz",5000,"T/T, L/C",3,1,"verified","坦桑尼亚是全球最大芝麻生产国之一，年产约12万吨，该公司专注有机认证芝麻，主要出口中国和印度。"),
+    ("乞力马扎罗咖啡出口公司","Kilimanjaro Coffee Exporters","TZ","Kilimanjaro Region, Moshi","乞力马扎罗咖啡|水洗AA|有机咖啡","0901.11","export@kilicafe.co.tz",300,"T/T, L/C",4,1,"verified","坦桑尼亚乞力马扎罗山产区咖啡，以其独特的巧克力和果香风味著称，适合高端烘焙商。"),
+    ("坦桑尼亚腰果出口协会","Tanzania Cashew nut Exporters Association","TZ","Mtwara Region","带壳腰果|去壳腰果|RW500级","0801.31","exports@tanzania-cashew.or.tz",10000,"L/C",5,1,"verified","坦桑尼亚是东非最大腰果生产国，RW500是国际优质等级，适合食品加工和零食品牌。"),
+    ("坦桑尼亚丁香与香料出口","Tanzania Cloves & Spices Export Ltd","TZ","Zanzibar, Pemba","丁香|肉豆蔻|黑胡椒","0907.00","spices@zanzibar.co.tz",500,"T/T",3,1,"verified","桑给巴尔是世界著名丁香产地，品质优良，适合食品香料和精油行业。"),
+    # ========== 加纳 - 可可 ==========
+    ("加纳可可与巧克力出口公司","Ghana Cocoa & Chocolate Exporters Ltd","GH","Ashanti Region, Kumasi","可可豆|可可脂|可可液块","1801.00, 1803.10, 1804.00","export@ghana-cocoa.gh",2000,"L/C, T/T",6,1,"verified","加纳是全球第二大可可生产国，该公司直接与可可局合作，保证品质和溯源，适合巧克力工厂采购。"),
+    ("加纳可可局认证出口商","Cocobod Licensed Exporters Ghana Ltd","GH","Accra, Greater Accra","优质可可豆|有机可可|Fairtrade认证可可","1801.00","premium@cocobod-ghana.com",1000,"L/C",8,1,"verified","加纳可可局直属出口商，提供经过严格分级的优质可可豆，品质稳定可靠。"),
+    # ========== 科特迪瓦 - 可可 ==========
+    ("科特迪瓦可可出口集团","Côte d'Ivoire Cocoa Export Group","CI","Abidjan, Soubré","可可豆|可可饼|可可粉","1801.00, 1805.00","ventes@civ-cocoa.ci",3000,"L/C",4,1,"verified","科特迪瓦是全球最大可可生产国，该公司供应各等级可可豆，价格有竞争力，适合大宗采购。"),
+    ("科特迪瓦可可质量认证公司","Côte d'Ivoire Quality Cocoa S.A.","CI","San-Pédro, Bas-Sassandra","出口级可可豆|有机认证可可|雨林联盟认证","1801.00","quality@ci-cocoa.ci",2000,"L/C",3,1,"verified","位于科特迪瓦最大可可产区San-Pédro，提供多种认证等级可可，专注可持续种植。"),
+    ("科特迪瓦热带木材出口公司","Côte d'Ivoire Tropical Timber Exporters","CI","San-Pédro, Bas-Sassandra","热带硬木|桃花心木|非洲紫檀","4403.49","export@ci-timber.ci",1000,"L/C",5,1,"verified","科特迪瓦林业资源丰富，适合家具、地板和建筑材料行业。"),
+    # ========== 南非 - 矿业、农产品 ==========
+    ("南非矿业出口公司","South Africa Minerals & Mining Export (Pty) Ltd","ZA","Johannesburg, Northern Cape","锰矿精矿|铁矿砂|铬矿","2602.00, 2603.00, 2610.00","exports@sa-minerals.co.za",100000,"L/C",10,1,"verified","南非最大矿业出口商之一，专业出口各类金属矿砂，有完善的检测报告体系（SGS/INTERTEK），适合钢铁厂和冶炼厂。"),
+    ("南非苹果与梨出口公司","South Africa Apples & Pears Export (Pty) Ltd","ZA","Stellenbosch, Western Cape","富士苹果|嘎啦苹果|梨","0808.10, 0808.30","export@sa-apples.co.za",10000,"L/C",7,1,"verified","南非是南半球重要苹果出口国，产季与中国互补，适合中国反季节水果贸易。"),
+    ("南非葡萄酒出口集团","South Africa Wine Export Group","ZA","Stellenbosch, Cape Winelands","红葡萄酒|白葡萄酒|起泡酒","2204.21","exports@sawine.co.za",500,"L/C, T/T",5,1,"verified","南非葡萄酒性价比高，在国际市场增长迅速，适合进口商和经销商采购。"),
+    ("南非柑橘出口公司","South Africa Citrus Exporters (Pty) Ltd","ZA","Patensie, Eastern Cape","橙子|柠檬|葡萄柚|橘子","0805.10, 0805.50, 0805.40","citrus@sa-citrus.co.za",20000,"L/C",6,1,"verified","南非是全球重要柑橘出口国，产季与中国互补，冷链物流体系成熟。"),
+    # ========== 摩洛哥 - 橄榄油、坚果 ==========
+    ("摩洛哥橄榄油与坚果出口公司","Morocco Olive Oil & Nuts Export SARL","MA","Meknes, Fes-Meknes","初榨橄榄油|去壳榛子|杏仁","1509.10, 0802.22","export@ma-olive-nuts.ma",500,"T/T, L/C",3,1,"verified","摩洛哥是全球最大橄榄油生产国之一，该公司同时出口优质坚果，适合食品电商和礼品渠道。"),
+    ("摩洛哥阿甘油出口公司","Morocco Argan Oil Export Co.","MA","Essaouira, Marrakech-Safi","阿甘油|阿甘坚果|有机阿甘油","1513.21","export@arganoil.ma",100,"T/T",4,1,"verified","摩洛哥阿甘油是全球最珍贵的植物油之一，UNESCO认证的非物质文化遗产，适合美妆和食品行业。"),
+    ("摩洛哥沙丁鱼罐头出口","Morocco Sardine Canning & Export SA","MA","Agadir, Souss-Massa","沙丁鱼罐头|金枪鱼罐头|腌制鱼","1604.14","export@ma-fish.ma",5000,"L/C",6,1,"verified","摩洛哥是全球最大沙丁鱼罐头出口国，品质符合欧盟标准，中国市场进口量稳步增长。"),
+    # ========== 埃及 - 棉纤维、柑橘 ==========
+    ("埃及棉纤维出口公司","Egyptian Cotton & Fiber Export Co.","EG","Alexandria, Beheira Governorate","长绒棉|棉纤维|纱线","5201.00, 5203.00","trade@eg-cotton.com.eg",10000,"L/C",8,1,"verified","埃及吉扎棉是全球最优质棉花之一，该公司直接与棉农合作，提供溯源证明，适合纺织企业。"),
+    ("埃及柑橘与石榴出口公司","Egyptian Citrus & Pomegranate Export S.A.E","EG","Ismailia, Sharqia","橙子|葡萄柚|石榴|柠檬","0805.10, 0805.40","exports@eg-citrus.com.eg",10000,"L/C",5,1,"verified","埃及是全球重要柑橘出口国，纳赛尔地区产优质橙子，适合中国进口商。"),
+    # ========== 卢旺达 - 茶叶、咖啡 ==========
+    ("卢旺达高地茶出口公司","Rwanda Highlands Tea Exporters","RW","Ruhengeri, Northern Province","红茶|绿茶|紫茶","0902.40","sales@rwanda-tea.rw",500,"T/T",2,1,"verified","卢旺达高山茶以花香和果香著称，在欧美高端市场有口碑，适合精品茶电商和礼品采购。"),
+    ("卢旺达精品咖啡出口","Rwanda Specialty Coffee Exporters Ltd","RW","Huye, Southern Province","Bourbon咖啡豆|水洗咖啡|有机认证","0901.11","export@rwanda-coffee.rw",200,"T/T, L/C",3,1,"verified","卢旺达Bourbon咖啡豆品质卓越，以其明亮的酸度和复杂果香闻名，是精品咖啡新宠。"),
+    # ========== 马达加斯加 - 香草、香料 ==========
+    ("马达加斯加香草出口商","Madagascar Vanilla & Spices Export SARL","MG","Sava Region, Toamasina","香草豆|丁香|依兰依兰精油","0905.00, 0907.00, 3301.29","export@mg-vanilla.mg",100,"T/T, L/C",5,1,"verified","马达加斯加供应全球约80%的香草，该公司位于香草主产区萨瓦区，提供有机认证香草，适合食品和香水行业。"),
+    ("马达加斯加依兰精油出口","Madagascar Ylang-Ylang Essential Oil Export","MG","Nosy Be, Diana Region","依兰依兰精油|香草精油|丁香油","3301.29","export@mg-ylang.mg",50,"T/T",4,1,"verified","马达加斯加是世界顶级依兰依兰精油产地，品质卓越，适合香水和芳疗行业。"),
+    ("马达加斯加桂皮出口公司","Madagascar Cinnamon Export SARL","MG","Sambava, Sava","锡兰桂皮|桂皮粉|桂皮油","0906.11, 0906.20","cinnamon@mg-spice.mg",500,"T/T",3,1,"verified","马达加斯加锡兰桂皮品质上乘，香气浓郁，适合食品调味和保健品行业。"),
+    # ========== 毛里求斯 - 蔗糖 ==========
+    ("毛里求斯蔗糖出口公司","Mauritius Sugar Export Corporation","MU","Port Louis, Moka","有机蔗糖|红糖|糖浆","1701.13, 1701.14","trade@mu-sugar.mu",5000,"L/C, T/T",7,1,"verified","毛里求斯甘蔗种植历史悠久，有机蔗糖在欧美市场有稳定需求，适合食品加工和零售电商。"),
+    # ========== 塞内加尔 - 花生、鱼粉 ==========
+    ("塞内加尔花生出口合作社","Senegal Groundnut Export Cooperative","SN","Kaolack, Fatick","花生|花生油|花生酱原料","1202.30, 1508.10","coop@sn-groundnut.sn",10000,"T/T",3,1,"verified","塞内加尔是西非最大花生生产国，该公司直接与合作社对接，价格竞争力强，适合榨油和食品加工。"),
+    ("塞内加尔鱼粉出口公司","Senegal Fishmeal Export Co.","SN","Saint-Louis, Northern Senegal","鱼粉|鱼油|海藻粉","2301.20","export@sn-fishmeal.sn",5000,"L/C",4,1,"verified","塞内加尔海域渔业资源丰富，鱼粉品质优良，适合水产饲料行业。"),
+    # ========== 乌干达 - 咖啡、茶叶 ==========
+    ("乌干达咖啡出口公司","Uganda Coffee Export Company Ltd","UG","Kampala, Bugisu Region","阿拉比卡生豆|罗布斯塔|水洗豆","0901.11","export@ug-coffee.ug",500,"L/C, T/T",4,1,"verified","乌干达咖啡豆品质优良，布吉苏产区咖啡有PDO潜力，适合精品烘焙电商。"),
+    ("乌干达西贡茶出口公司","Uganda Tea Exporters Ltd","UG","Jinja, Eastern Uganda","红茶CTC|绿茶|紫茶","0902.40","sales@ug-tea.ug",2000,"L/C",3,1,"verified","乌干达是东非重要茶叶生产国，西贡河谷产优质红茶，适合茶饮品牌。"),
+    # ========== 吉布提 - 物流枢纽 ==========
+    ("吉布提港口物流与贸易公司","Djibouti Port Trade & Logistics Co.","DJ","Djibouti City, Tadjourah","咖啡物流|芝麻|皮革原料","0901.11, 1207.40, 4101.20","trade@djibouti-port.dj",1000,"T/T",6,1,"verified","吉布提是中国一带一路重要节点，该公司提供从埃塞俄比亚到吉布提港的全套物流清关服务，适合第一次从非洲进口的企业。"),
+    # ========== 尼日利亚 - 可可、芝麻 ==========
+    ("尼日利亚可可出口公司","Nigeria Cocoa Export Company","NG","Lagos, Cross River State","可可豆|可可脂|可可饼","1801.00, 1804.00","exports@ng-cocoa.ng",5000,"L/C",2,0,"new","尼日利亚非洲最大人口国，可可产量全球第四，该公司近年开始开拓中国市场，提供SGS检测报告。"),
+    ("尼日利亚芝麻出口协会","Nigeria Sesame Export Association","NG","Kano, Northern Nigeria","白芝麻|黑芝麻|胡麻","1207.40","export@ng-sesame.ng",5000,"T/T, L/C",2,0,"new","尼日利亚北部是优质芝麻产区，年产量大，该公司开始专注中国市场。"),
+    # ========== 赞比亚 - 矿业、宝石 ==========
+    ("赞比亚铜带矿业公司","Zambia Copperbelt Mining & Exports Ltd","ZM","Kitwe, Copperbelt Province","铜矿砂|钴矿|锌矿","2603.00, 2605.00, 2608.00","sales@zm-copperbelt.zm",50000,"L/C",8,1,"verified","赞比亚铜带省是全球重要铜矿区，该公司长期向中国出口矿砂，有长期合同经验，适合大型冶炼厂。"),
+    ("赞比亚祖母绿出口公司","Zambia Emerald Exporters Ltd","ZM","Kafue, Lusaka Province","祖母绿宝石|紫水晶|海蓝宝","7103.91","gems@zm-emerald.zm",10,"L/C",5,1,"verified","赞比亚是世界顶级祖母绿产地之一，品质可与哥伦比亚媲美，适合珠宝行业。"),
+    # ========== 贝宁 - 棉花 ==========
+    ("贝宁棉花出口公司","Benin Cotton Exporters SARL","BJ","Cotonou, Borgou","原棉|棉籽|棉纱","5201.00, 5203.00","export@bj-cotton.bj",10000,"T/T, L/C",3,1,"verified","贝宁是西非重要棉花生产国，该公司与法国公司合作管理棉田，质量稳定，适合纺织企业。"),
+    # ========== 喀麦隆 - 可可、咖啡 ==========
+    ("喀麦隆可可出口公司","Cameroon Cocoa Export SA","CM","Douala, South Region","可可豆|可可脂|可可壳","1801.00, 1804.00","trade@cm-cocoa.cm",2000,"L/C",2,0,"new","喀麦隆可可香气浓郁，适合精品巧克力生产，该公司位于杜阿拉港口城市，物流便利。"),
+    ("喀麦隆咖啡出口公司","Cameroon Arabica Coffee Exporters Ltd","CM","Bamenda, Northwest Region","阿拉比卡咖啡|罗布斯塔|有机咖啡","0901.11","export@cm-coffee.cm",300,"T/T, L/C",2,1,"verified","喀麦隆西北产区产优质阿拉比卡，以其独特的巧克力和水果风味著称。"),
+    # ========== 莫桑比克 - 腰果、木材 ==========
+    ("莫桑比克腰果出口公司","Mozambique Cashew nut Export Ltd","MZ","Nampula, Northern Mozambique","带壳腰果|去壳腰果|RW级","0801.31","export@mz-cashew.mz",5000,"L/C",3,1,"verified","莫桑比克是腰果传统产区，品质优良，适合食品加工和零食品牌。"),
+    ("莫桑比克珍贵木材出口","Mozambique Precious Woods Export S.A.","MZ","Beira, Sofala","红木锯材|黑木|桃花心木","4403.49","export@mz-wood.mz",500,"L/C",4,1,"verified","莫桑比克拥有珍贵硬木资源，适合高端家具和乐器制造。"),
+    # ========== 加蓬 - 锰矿、木材 ==========
+    ("加蓬锰矿出口公司","Gabon Manganese Export Company S.A.","GA","Moanda, Haut-Ogooué","锰矿|锰精矿|锰矿石","2602.00","export@ga-manganese.ga",50000,"L/C",6,1,"verified","加蓬是世界重要锰矿生产国，品位高，适合钢铁冶炼。"),
+    ("加蓬奥库姆贝丹木出口","Gabon Okoume Plywood Export SARL","GA","Port-Gentil, Ogooue-Maritime","奥库姆胶合板|红木锯材|MDF板","4412.31","export@ga-plywood.ga",1000,"L/C",4,1,"verified","加蓬奥库姆木是优质胶合板原料，适合建材和家具制造。"),
+    # ========== 刚果（金）- 钴矿、铜矿 ==========
+    ("刚果民主共和国矿业出口公司","DRC Mining & Exports S.A.","CD","Kolwezi, Lualaba","钴矿|铜矿|钶钽铁矿","2605.00, 2603.00, 2615.90","export@cd-mining.cd",10000,"L/C",8,1,"verified","刚果（金）是全球最大钴生产国，供应全球约70%的钴，适合电池和新能源产业。"),
+    # ========== 突尼斯 - 橄榄油、椰枣 ==========
+    ("突尼斯顶级橄榄油出口公司","Tunisia Premium Olive Oil Export S.A.","TN","Sfax, Sfax Governorate","特级初榨橄榄油|橄榄油渣|橄榄","1509.10, 1509.90","export@tn-olive.tn",500,"L/C",6,1,"verified","突尼斯是地中海橄榄油重要产区，品质卓越，价格有竞争力。"),
+    ("突尼斯椰枣出口公司","Tunisian Dates Export Co.","TN","Tozeur, Nefzaoua","椰枣|椰枣酱|有机椰枣","0804.10","export@tn-dates.tn",1000,"T/T, L/C",5,1,"verified","突尼斯椰枣品质优良，德尔杰尔椰枣享誉世界，适合食品电商和礼品。"),
+    # ========== 阿尔及利亚 - 椰枣 ==========
+    ("阿尔及利亚椰枣出口公司","Algeria Dates Export Company S.A.","DZ","Biskra, Ziban","椰枣|椰枣干|有机椰枣","0804.10","export@dz-dates.dz",2000,"L/C",4,1,"verified","阿尔及利亚是椰枣主产国，瓦尔扎扎特地区产优质椰枣，适合进口分销。"),
+    # ========== 苏丹 - 阿拉伯胶 ==========
+    ("苏丹阿拉伯胶出口公司","Sudan Gum Arabic Export Co.","SD","Kordofan, North Kordofan","阿拉伯胶|天然树胶|食品添加剂","1301.20","export@sd-gumarabic.sd",1000,"T/T",5,1,"verified","苏丹供应全球约70%的阿拉伯胶，是食品、饮料和制药行业的重要原料。"),
+    # ========== 布隆迪 - 咖啡 ==========
+    ("布隆迪精品咖啡出口公司","Burundi Specialty Coffee Exporters S.A.","BI","Kayanza, Kayanza Province","波旁咖啡|水洗咖啡|日晒咖啡","0901.11","export@bi-coffee.bi",200,"T/T, L/C",2,1,"verified","布隆迪咖啡以波旁品种为主，风味复杂，酸度适中，在精品咖啡市场越来越受欢迎。"),
+    # ========== 多哥 - 可可、咖啡 ==========
+    ("多哥可可与咖啡出口公司","Togo Cocoa & Coffee Export Company S.A.","TG","Lomé, Maritime Region","可可豆|罗布斯塔咖啡|阿拉比卡咖啡","1801.00, 0901.11","export@tg-commodities.tg",2000,"L/C",3,1,"verified","多哥是西非可可和咖啡生产国，该公司专注出口业务，适合大宗采购。"),
+    # ========== 塞拉利昂 - 可可 ==========
+    ("塞拉利昂可可出口公司","Sierra Leone Cocoa Exporters Ltd","SL","Kenema, Eastern Province","有机可可豆|常规可可豆|Fairtrade认证","1801.00","export@sl-cocoa.sl",1000,"T/T, L/C",2,1,"verified","塞拉利昂可可种植区未受污染，适合有机和公平贸易认证产品。"),
+    # ========== 利比里亚 - 橡胶、可可 ==========
+    ("利比里亚橡胶与可可出口公司","Liberia Rubber & Cocoa Export Co.","LR","Buchanan, Grand Bassa","天然橡胶|可可豆|棕榈油","4001.22, 1801.00, 1511.10","export@lr-commodities.lr",5000,"L/C",3,1,"verified","利比里亚拥有大片橡胶种植园，物流便利，适合橡胶和可可进口商。"),
+    # ========== 纳米比亚 - 葡萄、牛肉 ==========
+    ("纳米比亚葡萄出口公司","Namibia Grape Export (Pty) Ltd","NA","Aussenkehr, Karas Region","鲜食葡萄|红提|绿提","0806.10","export@na-grapes.na",1000,"L/C",4,1,"verified","纳米比亚奥兰治蒙德产区葡萄品质优良，产季与中国互补，适合水果进口商。"),
+    ("纳米比亚牛肉出口公司","Namibia Beef Export S.A.","NA","Windhoek, Khomas","冷冻牛肉|牛肉罐头|皮革","0202.10, 0202.20","export@na-beef.na",5000,"L/C",5,1,"verified","纳米比亚是非洲唯一批准向中国出口牛肉的国家，品质优良，适合食品进口商。"),
+    # ========== 津巴布韦 - 烟草 ==========
+    ("津巴布韦烟草出口公司","Zimbabwe Tobacco Export Sales (Pvt) Ltd","ZW","Harare, Mashonaland East","弗吉尼亚烟草|白肋烟|烤烟","2401.20","sales@ztes.co.zw",10000,"L/C",10,1,"verified","津巴布韦是世界重要烟草出口国，弗吉尼亚烟草品质优良，适合烟草企业。"),
+    # ========== 博茨瓦纳 - 牛肉 ==========
+    ("博茨瓦纳牛肉出口公司","Botswana Beef & Livestock Export Company","BW","Gaborone, South-East District","冷冻牛肉|牛肉干|皮革","0202.10","export@bw-beef.bw",3000,"L/C",4,1,"verified","博茨瓦纳牛肉品质优良，符合国际标准，适合食品加工和零售商。"),
+    # ========== 马里 - 棉花、芝麻 ==========
+    ("马里棉花与芝麻出口公司","Mali Cotton & Sesame Export S.A.","ML","Bamako, Koulikoro","原棉|白芝麻|花生","5201.00, 1207.40","export@ml-commodities.ml",10000,"T/T, L/C",3,1,"verified","马里是西非重要棉花和芝麻生产国，品质稳定，价格有竞争力。"),
+    # ========== 尼日尔 - 洋葱 ==========
+    ("尼日尔洋葱出口公司","Niger Onion Export Cooperative","NE","Galmi, Tahoua","紫皮洋葱|白洋葱|脱水洋葱","0703.10","export@ne-onion.ne",5000,"T/T",2,1,"verified","尼日尔加尔米洋葱享誉西非，品质优良，适合蔬菜进口和脱水加工。"),
 ]
 
 
