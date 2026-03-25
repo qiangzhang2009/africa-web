@@ -8,7 +8,7 @@ import os, json
 from datetime import datetime
 from openai import OpenAI
 from app.services import tariff as tariff_service
-from app.models.database import get_db, get_db_path
+from app.models.database import get_db, get_db_path, _is_postgres
 from app.routers.auth import get_optional_user, get_user_daily_usage
 
 DB_PATH = get_db_path()
@@ -20,7 +20,12 @@ router = APIRouter()
 # ─── POST /calculate/tariff ─────────────────────────────────────────────────
 
 def _ensure_calc_table(db_path: str) -> None:
-    """Self-healing: create calculations table if it doesn't exist yet."""
+    """Self-healing: create calculations table if it doesn't exist yet (SQLite only).
+    
+    For PostgreSQL, the table is created by init_db(). This function is a no-op.
+    """
+    if _is_postgres():
+        return  # PostgreSQL: table already exists via init_db()
     conn = get_db(db_path)
     cursor = conn.cursor()
     cursor.execute("""
