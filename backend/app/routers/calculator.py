@@ -8,7 +8,7 @@ import os, json
 from datetime import datetime
 from openai import OpenAI
 from app.services import tariff as tariff_service
-from app.models.database import get_db, get_db_path
+from app.models.database import get_db, get_db_path, sql_now_datetime
 from app.routers.auth import get_optional_user, get_user_daily_usage
 
 DB_PATH = get_db_path()
@@ -119,7 +119,7 @@ async def calc_tariff(input: TariffCalcInput, current_user: dict = Depends(get_o
         conn = get_db(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, " + sql_now_datetime() + ")",
             (user_id, input.hs_code, input.hs_code, input.origin_country, input.destination, input.fob_value, json.dumps(result))
         )
         conn.commit()
@@ -187,7 +187,7 @@ async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(
         conn = get_db(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, " + sql_now_datetime() + ")",
             (
                 user_id,
                 input.product_name,

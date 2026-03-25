@@ -82,6 +82,11 @@ def sql_now() -> str:
     return "CURRENT_DATE" if _is_postgres() else "DATE('now')"
 
 
+def sql_now_datetime() -> str:
+    """Return the SQL expression for current timestamp as TEXT (for TEXT columns)."""
+    return "NOW()::text" if _is_postgres() else "datetime('now')"
+
+
 def sql_cast_date(col: str) -> str:
     """
     Cast a TEXT date column to DATE for safe comparisons.
