@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.schemas import (
-    TariffCalcInput, TariffCalcResult,
-    ImportCostInput, ImportCostResult,
+    TariffCalcInput,
+    ImportCostInput,
     OriginCheckInput, OriginCheckResult,
 )
 import os, json
@@ -82,7 +82,7 @@ def _check_and_record_calculation(user_id: int | None, db_path: str) -> tuple[bo
     return remaining > 0, used_today, max(0, remaining)
 
 
-@router.post("/calculate/tariff", response_model=TariffCalcResult)
+@router.post("/calculate/tariff")
 async def calc_tariff(input: TariffCalcInput, current_user: dict = Depends(get_optional_user)):
     user_id = current_user["user_id"] if current_user else None
 
@@ -158,7 +158,7 @@ async def get_calc_daily_usage(current_user: dict = Depends(get_optional_user)):
 
 # ─── POST /calculate/import-cost ─────────────────────────────────────────────
 
-@router.post("/calculate/import-cost", response_model=ImportCostResult)
+@router.post("/calculate/import-cost")
 async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(get_optional_user)):
     user_id = current_user["user_id"] if current_user else None
 
