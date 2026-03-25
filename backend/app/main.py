@@ -119,6 +119,51 @@ def debug_reinit_db():
         return {"status": "error", "message": str(e)}
 
 
+@app.get("/debug/export-suppliers")
+def debug_export_suppliers():
+    """Export all suppliers as JSON for backup or sync."""
+    from app.models.database import get_db, get_db_path
+    db_path = get_db_path()
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM suppliers ORDER BY id")
+        rows = [dict(r) for r in cursor.fetchall()]
+        return {"count": len(rows), "suppliers": rows}
+    finally:
+        conn.close()
+
+
+@app.get("/debug/export-all-data")
+def debug_export_all_data():
+    """Export all reference data as JSON."""
+    from app.models.database import get_db, get_db_path
+    db_path = get_db_path()
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    try:
+        def get_table(name):
+            try:
+                cursor.execute(f"SELECT * FROM {name}")
+                cols = [d[0] for d in cursor.description]
+                rows = []
+                for row in cursor.fetchall():
+                    rows.append(dict(zip(cols, row)))
+                return rows
+            except Exception as e:
+                return {"error": str(e)}
+
+        return {
+            "africa_countries": get_table("africa_countries"),
+            "hs_codes": get_table("hs_codes"),
+            "freight_routes": get_table("freight_routes"),
+            "cert_guides": get_table("cert_guides"),
+            "suppliers": get_table("suppliers"),
+        }
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

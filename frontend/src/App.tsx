@@ -15,6 +15,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AccountPage from './pages/AccountPage'
 import AdminPage from './pages/AdminPage'
+import DatabasePage from './pages/DatabasePage'
 import FreightPage from './pages/FreightPage'
 import CertificatePage from './pages/CertificatePage'
 import SuppliersPage from './pages/SuppliersPage'
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="freight" element={<FreightPage />} />
           <Route path="certificate" element={<CertificatePage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="database" element={<DatabasePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

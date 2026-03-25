@@ -141,6 +141,9 @@ export default function AdminPage() {
         <button onClick={() => navigate('/account')} className="text-sm text-slate-500 hover:text-slate-700">
           ← 返回账号中心
         </button>
+        <button onClick={() => navigate('/database')} className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+          数据库管理 →
+        </button>
       </div>
 
       {msg && (
