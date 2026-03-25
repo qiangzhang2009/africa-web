@@ -53,8 +53,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         if not is_active:
             raise HTTPException(status_code=401, detail="账号已禁用")
 
-        now = datetime.now().strftime("%Y-%m-%d")
-        if tier != "free" and expires_at and expires_at < now:
+        now_str = datetime.now().strftime("%Y-%m-%d")
+        if tier != "free" and expires_at and expires_at < now_str:
             tier = "free"
             conn = get_db(DB_PATH)
             cursor = conn.cursor()
@@ -108,7 +108,7 @@ def get_user_tier_from_db(user_id: int, db_path: str) -> tuple[str, str | None, 
     conn.close()
     if not row:
         return "free", None, False, False
-    return row["tier"], row["expires_at"], bool(row["is_admin"]), bool(row["is_active"])
+    return row["tier"], _row_str(row["expires_at"]), bool(row["is_admin"]), bool(row["is_active"])
 
 
 def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
