@@ -40,7 +40,14 @@ def _get_user_subscription_info(user_id: int) -> dict:
 
     now = datetime.now().strftime("%Y-%m-%d")
     tier = row["tier"]
-    expires_at = row["expires_at"]
+    # Convert datetime objects to ISO string for consistent string comparison
+    def _ts(v):
+        if v is None:
+            return None
+        if hasattr(v, "isoformat"):
+            return v.isoformat()[:10]
+        return str(v)[:10]
+    expires_at = _ts(row["expires_at"])
 
     is_active = True
     days_remaining = None

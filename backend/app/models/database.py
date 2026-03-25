@@ -82,6 +82,15 @@ def sql_now() -> str:
     return "CURRENT_DATE" if _is_postgres() else "DATE('now')"
 
 
+def sql_cast_date(col: str) -> str:
+    """
+    Cast a TEXT date column to DATE for safe comparisons.
+    PostgreSQL: expires_at is TEXT, must cast to compare with CURRENT_DATE.
+    SQLite: text columns compare correctly with date strings.
+    """
+    return f"DATE({col})" if _is_postgres() else col
+
+
 def sql_date_sub_days(days: int) -> str:
     """Return SQL for 'today minus N days' in the active driver's syntax."""
     if _is_postgres():
@@ -117,7 +126,7 @@ def _pg_connect(url: str):
             self._cursor = conn.cursor()
 
         def execute(self, sql: str, params: tuple = ()):
-            adapted = _adapt_sql(sql)
+            adapted = sql.replace("?", "%s") if _is_postgres() else sql
             try:
                 return self._cursor.execute(adapted, params)
             except Exception:
@@ -125,7 +134,7 @@ def _pg_connect(url: str):
                 raise
 
         def executemany(self, sql: str, seq_of_params):
-            adapted = _adapt_sql(sql)
+            adapted = sql.replace("?", "%s") if _is_postgres() else sql
             try:
                 return self._cursor.executemany(adapted, seq_of_params)
             except Exception:

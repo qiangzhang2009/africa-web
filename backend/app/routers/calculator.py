@@ -63,7 +63,10 @@ def _check_and_record_calculation(user_id: int | None, db_path: str) -> tuple[bo
         return True, 0, 999999
 
     tier = row["tier"]
-    expires_at = row["expires_at"]
+    # Convert datetime objects to ISO string for string comparison
+    def _ts(v):
+        return v.isoformat() if hasattr(v, "isoformat") else (v or "")
+    expires_at = _ts(row["expires_at"])
     now = datetime.now().strftime("%Y-%m-%d")
 
     # Downgrade expired subscriptions
