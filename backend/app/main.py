@@ -57,6 +57,19 @@ app.add_middleware(
 
 
 # Debug endpoints
+@app.get("/debug-get-optional")
+def debug_get_optional():
+    """Test get_optional_user."""
+    import traceback
+    from app.routers.auth import get_optional_user
+    from fastapi.security import HTTPAuthorizationCredentials
+    try:
+        result = get_optional_user(None)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
+
+
 @app.get("/debug-tariff")
 def debug_tariff():
     """Debug tariff calculation."""
@@ -86,10 +99,10 @@ def debug_tariff():
 
 @app.get("/debug-import")
 def debug_import():
-    """Debug import cost calculation."""
+    """Debug import cost calculation - bare, no auth."""
     import traceback, json
     from app.services import tariff as tariff_service
-    from app.models.database import get_db_path, get_db
+    from app.models.database import get_db_path, get_db, _ensure_table
     try:
         result = tariff_service.calculate_import_cost(
             product_name="咖啡生豆", quantity_kg=30, fob_per_kg=8,
@@ -103,6 +116,7 @@ def debug_import():
         total_val = bd_dict.get("total_cost") or 0
         serializable = dict(result)
         serializable["breakdown"] = bd_dict
+        serializable["input"] = {"product_name": "咖啡生豆", "quantity_kg": 30, "fob_per_kg": 8, "origin": "ET", "destination": "CN"}
         json_str = json.dumps(serializable)
         conn = get_db(get_db_path())
         cursor = conn.cursor()
@@ -112,7 +126,7 @@ def debug_import():
         )
         conn.commit()
         conn.close()
-        return {"success": True, "total": total_val, "keys": list(result.keys())}
+        return {"success": True, "total": total_val, "keys": list(result.keys()), "input_keys": list(serializable.get("input", {}).keys())}
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
 
