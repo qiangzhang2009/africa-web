@@ -93,6 +93,37 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
+@app.get("/debug/calc-record")
+def debug_calc_record():
+    """Test the calculation INSERT to verify json.dumps fix."""
+    import traceback, json
+    from app.models.database import get_db, get_db_path
+    try:
+        conn = get_db(get_db_path())
+        cursor = conn.cursor()
+        # Test with a sample Pydantic-like object
+        sample_result = {
+            "success": True,
+            "message": "测试",
+            "breakdown": {"total_cost": 1234.56, "fob_value": 500.0},
+            "input": {"product_name": "咖啡"},
+        }
+        # This simulates what the calculator does
+        bd = sample_result.get("breakdown", {})
+        total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
+        fob_cny = bd.get("fob_value", 0) if isinstance(bd, dict) else 0
+        cursor.execute(
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (1, "咖啡", None, "ET", "CN", fob_cny, json.dumps(sample_result), total_val)
+        )
+        conn.commit()
+        last_id = cursor.fetchone()
+        conn.close()
+        return {"step": "success", "insert_id": last_id}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
