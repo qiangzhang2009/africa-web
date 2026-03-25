@@ -120,27 +120,23 @@ def debug_subscribe_status():
         }
 
 
-@app.get("/debug/calc-check")
-def debug_calc_check():
-    """Debug tariff calculation."""
-    import traceback
-    from app.services import tariff as tariff_service
-    from app.models.database import get_db_path
+@app.get("/debug/calc-insert")
+def debug_calc_insert():
+    """Debug the calculation INSERT in calculator.py."""
+    import traceback, json
+    from app.models.database import get_db, get_db_path, sql_now_datetime
     try:
-        result = tariff_service.calculate_import_cost(
-            product_name="咖啡生豆",
-            quantity_kg=30,
-            fob_per_kg=8,
-            origin="ET",
-            db_path=get_db_path(),
+        conn = get_db(get_db_path())
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, " + sql_now_datetime() + ")",
+            (1, "咖啡生豆", None, "ET", "CN", 240, json.dumps({"success": True}),)
         )
-        return {"step": "success", "result": str(result)[:500]}
+        conn.commit()
+        conn.close()
+        return {"step": "success", "sql_now_datetime": sql_now_datetime()}
     except Exception as e:
-        return {
-            "error": str(e),
-            "type": type(e).__name__,
-            "traceback": traceback.format_exc(),
-        }
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
 
 
 if __name__ == "__main__":
