@@ -116,11 +116,21 @@ async def calc_tariff(input: TariffCalcInput, current_user: dict = Depends(get_o
 
     # Record successful calculation for quota tracking
     if user_id and result.get("success"):
+        # Convert Pydantic breakdown models to dicts for JSON serialization
+        serializable = dict(result)
+        if "breakdown" in serializable and hasattr(serializable["breakdown"], "model_dump"):
+            serializable["breakdown"] = serializable["breakdown"].model_dump()
+        if "input" in serializable and hasattr(serializable["input"], "model_dump"):
+            serializable["input"] = serializable["input"].model_dump()
+
+        bd = serializable.get("breakdown", {})
+        total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
+
         conn = get_db(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (user_id, input.hs_code, input.hs_code, input.origin_country, input.destination, input.fob_value, json.dumps(result))
+            "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, input.hs_code, input.hs_code, input.origin_country, input.destination, input.fob_value, json.dumps(serializable), total_val)
         )
         conn.commit()
         conn.close()
@@ -179,16 +189,21 @@ async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(
 
     # Record successful import-cost calculation for quota tracking consistency.
     if user_id and result.get("success"):
+        # Convert Pydantic breakdown to dict for JSON serialization
         breakdown = result.get("breakdown")
         if breakdown is not None and hasattr(breakdown, "model_dump"):
             breakdown_dict = breakdown.model_dump()
+            serializable_result = dict(result)
+            serializable_result["breakdown"] = breakdown_dict
+            serializable_result["input"] = input.model_dump()
         else:
             breakdown_dict = breakdown or {}
+            serializable_result = result
 
-        conn = get_db(DB_PATH)
-        cursor = conn.cursor()
         total_val = breakdown_dict.get("total_cost") or 0
         fob_cny = breakdown_dict.get("fob_value") or 0
+        conn = get_db(DB_PATH)
+        cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
@@ -198,7 +213,7 @@ async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(
                 input.origin,
                 input.destination,
                 fob_cny,
-                json.dumps(result),
+                json.dumps(serializable_result),
                 total_val,
             ),
         )
