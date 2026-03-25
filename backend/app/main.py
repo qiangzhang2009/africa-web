@@ -93,6 +93,17 @@ def health():
     return {"status": "ok", "service": "africa-zero"}
 
 
+@app.get("/debug/subscribe-info")
+def debug_subscribe_info():
+    """Debug subscription info."""
+    import traceback
+    from app.routers.subscription import _get_user_subscription_info
+    try:
+        info = _get_user_subscription_info(1)
+        return {"success": True, "info": str(info)[:500]}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
+
 @app.get("/debug/subscribe-status")
 def debug_subscribe_status():
     """Debug subscription status endpoint."""

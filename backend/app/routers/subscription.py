@@ -74,6 +74,13 @@ def _get_user_subscription_info(user_id: int) -> dict:
 
     remaining_queries = None if tier != "free" else FREE_DAILY_QUOTA
 
+    def _ts(v):
+        if v is None:
+            return None
+        if hasattr(v, "isoformat"):
+            return v.isoformat()[:10]
+        return str(v)[:10]
+
     return {
         "tier": tier,
         "expires_at": expires_at,
@@ -87,9 +94,9 @@ def _get_user_subscription_info(user_id: int) -> dict:
             email=row["email"],
             tier=tier,
             is_admin=bool(row["is_admin"]),
-            subscribed_at=row["subscribed_at"],
+            subscribed_at=_ts(row["subscribed_at"]),
             expires_at=expires_at,
-            created_at=row["created_at"],
+            created_at=_ts(row["created_at"]),
         ),
     }
 
