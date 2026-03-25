@@ -56,19 +56,7 @@ app.add_middleware(
 )
 
 
-# Debug endpoints
-@app.get("/debug-get-optional")
-def debug_get_optional():
-    """Test get_optional_user."""
-    import traceback
-    from app.routers.auth import get_optional_user
-    from fastapi.security import HTTPAuthorizationCredentials
-    try:
-        result = get_optional_user(None)
-        return {"success": True, "result": result}
-    except Exception as e:
-        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
-
+# ─── Debug endpoints ───────────────────────────────────────────────────────────
 
 @app.get("/debug-tariff")
 def debug_tariff():
@@ -99,10 +87,10 @@ def debug_tariff():
 
 @app.get("/debug-import")
 def debug_import():
-    """Debug import cost calculation - bare, no auth."""
+    """Debug import cost calculation."""
     import traceback, json
     from app.services import tariff as tariff_service
-    from app.models.database import get_db_path, get_db, _ensure_table
+    from app.models.database import get_db_path, get_db
     try:
         result = tariff_service.calculate_import_cost(
             product_name="咖啡生豆", quantity_kg=30, fob_per_kg=8,
@@ -126,12 +114,64 @@ def debug_import():
         )
         conn.commit()
         conn.close()
-        return {"success": True, "total": total_val, "keys": list(result.keys()), "input_keys": list(serializable.get("input", {}).keys())}
+        return {"success": True, "total": total_val, "keys": list(result.keys())}
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
 
 
-# API Routers
+@app.get("/debug-get-optional")
+def debug_get_optional():
+    """Test get_optional_user."""
+    import traceback
+    from app.routers.auth import get_optional_user
+    try:
+        result = get_optional_user(None)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-500:]}
+
+
+@app.get("/debug-calc-full")
+def debug_calc_full():
+    """Mimic the full calc_tariff flow with all router dependencies."""
+    import traceback, json
+    from app.services import tariff as tariff_service
+    from app.models.database import get_db_path, get_db
+    from app.routers.calculator import _ensure_calc_table, _check_and_record_calculation, DB_PATH as CALC_DB
+    try:
+        user_id = 1
+        _ensure_calc_table(CALC_DB)
+        allowed, _, _ = _check_and_record_calculation(user_id, CALC_DB)
+        if not allowed:
+            return {"error": "quota exceeded", "allowed": False}
+        result = tariff_service.calculate_tariff(
+            hs_code="0901", origin_country="ET", destination="CN",
+            fob_value=240, db_path=get_db_path(),
+        )
+        result["input"] = {"product_name": "coffee", "origin_country": "ET", "hs_code": "0901", "destination": "CN", "fob_value": 240}
+        if user_id and result.get("success"):
+            bd = result.get("breakdown", {})
+            total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
+            serializable = dict(result)
+            if "breakdown" in serializable and hasattr(serializable["breakdown"], "model_dump"):
+                serializable["breakdown"] = serializable["breakdown"].model_dump()
+            if "input" in serializable and hasattr(serializable["input"], "model_dump"):
+                serializable["input"] = serializable["input"].model_dump()
+            conn = get_db(get_db_path())
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO calculations (user_id, product_name, hs_code, origin, destination, fob_value, result_json, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (user_id, "0901", "0901", "ET", "CN", 240, json.dumps(serializable), total_val)
+            )
+            conn.commit()
+            conn.close()
+        return {"success": True, "total": total_val, "result_keys": list(result.keys())}
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
+
+
+# ─── API Routers ──────────────────────────────────────────────────────────────
+
 app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
 app.include_router(hs_codes.router, prefix="/api/v1", tags=["HS编码查询"])
 app.include_router(countries.router, prefix="/api/v1", tags=["国家信息"])
