@@ -643,28 +643,41 @@ CREATE TABLE IF NOT EXISTS cert_guides (
 CREATE TABLE IF NOT EXISTS suppliers (
     id                  SERIAL PRIMARY KEY,
     name_zh             TEXT NOT NULL,
-    name_en             TEXT NOT NULL,
+    name_en             TEXT,
     country             TEXT NOT NULL,
     region              TEXT,
     main_products       TEXT,
     main_hs_codes       TEXT,
+    contact_name        TEXT,
     contact_email       TEXT,
+    contact_phone       TEXT,
+    website             TEXT,
     min_order_kg        REAL,
     payment_terms       TEXT,
-    export_years        INTEGER,
+    export_years        INTEGER DEFAULT 0,
+    annual_export_tons REAL,
     verified_chamber    INTEGER DEFAULT 0,
-    status              TEXT DEFAULT 'active',
+    verified_实地拜访   INTEGER DEFAULT 0,
+    verified_sgs        INTEGER DEFAULT 0,
+    rating_avg          REAL DEFAULT 0,
+    review_count        INTEGER DEFAULT 0,
+    status              TEXT DEFAULT 'verified',
+    intro               TEXT,
+    certifications      TEXT,
     created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    intro               TEXT
+    updated_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS supplier_reviews (
     id                  SERIAL PRIMARY KEY,
     supplier_id         INTEGER NOT NULL,
-    user_id             INTEGER NOT NULL,
-    rating              REAL NOT NULL,
-    review_text         TEXT,
-    verified_purchase   INTEGER DEFAULT 0,
+    user_id             INTEGER,
+    user_email          TEXT,
+    quality_score       REAL,
+    delivery_score      REAL,
+    communication_score REAL,
+    comment             TEXT,
+    is_verified_deal    INTEGER DEFAULT 0,
     created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -1330,13 +1343,32 @@ def init_db(db_path: str) -> None:
         cursor.executescript(SCHEMA_SQL)
     conn.commit()
 
-    # ── Migration: add missing columns to existing users table ─────────────────
+    # ── Migration: add missing columns to existing tables ─────────────────────────
     # PostgreSQL DDL can leave a transaction aborted on error.
     # Strategy: execute each ALTER in its own mini-transaction via ROLLBACK on failure.
     _pg_migrations = [
+        # users table migrations
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin INTEGER DEFAULT 0",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active INTEGER DEFAULT 1",
+        # suppliers table migrations (fix incomplete PG schema)
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS name_en TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS contact_name TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS contact_phone TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS website TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS annual_export_tons REAL",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS verified_实地拜访 INTEGER DEFAULT 0",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS verified_sgs INTEGER DEFAULT 0",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS rating_avg REAL DEFAULT 0",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS certifications TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP",
+        # supplier_reviews table migrations (fix incomplete PG schema)
+        "ALTER TABLE supplier_reviews ADD COLUMN IF NOT EXISTS user_email TEXT",
+        "ALTER TABLE supplier_reviews ADD COLUMN IF NOT EXISTS quality_score REAL",
+        "ALTER TABLE supplier_reviews ADD COLUMN IF NOT EXISTS delivery_score REAL",
+        "ALTER TABLE supplier_reviews ADD COLUMN IF NOT EXISTS communication_score REAL",
+        "ALTER TABLE supplier_reviews ADD COLUMN IF NOT EXISTS is_verified_deal INTEGER DEFAULT 0",
     ]
     if _is_postgres():
         for alter_sql in _pg_migrations:
@@ -1357,7 +1389,7 @@ def init_db(db_path: str) -> None:
         """Insert many rows; for PostgreSQL uses ON CONFLICT DO NOTHING."""
         if _is_postgres():
             on_conflict = f"ON CONFLICT DO NOTHING"
-            final_sql = insert_sql.replace("VALUES", f"{on_conflict} VALUES", 1)
+            final_sql = _to_pg_sql(insert_sql.replace("VALUES", f"{on_conflict} VALUES", 1))
         else:
             final_sql = insert_sql.replace("INSERT INTO", "INSERT OR IGNORE INTO", 1)
         try:
@@ -1365,11 +1397,18 @@ def init_db(db_path: str) -> None:
         except Exception:
             pass
 
+    def _to_pg_sql(sql: str) -> str:
+        """Convert SQLite-style ? placeholders to PostgreSQL %s."""
+        if _is_postgres():
+            return sql.replace("?", "%s")
+        return sql
+
     def force_upsert_many(table: str, values: list, insert_sql: str):
         """Delete all then insert. Works for both drivers."""
         try:
+            pg_sql = _to_pg_sql(insert_sql)
             cursor.execute(f"DELETE FROM {table}")
-            cursor.executemany(insert_sql, values)
+            cursor.executemany(pg_sql, values)
         except Exception:
             pass
 

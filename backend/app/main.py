@@ -35,6 +35,7 @@ _allow_origins = [
     "https://global2china.zxqconsulting.com",
     "https://frontend-nrlqfber2-johnzhangs-projects-50e83ec4.vercel.app",
     "https://africa-web-1.onrender.com",
+    "https://africa-web-wuxs.onrender.com",
     "https://africa-zero-frontend.vercel.app",
     "http://localhost:5173",
     "http://localhost:8000",
@@ -72,6 +73,50 @@ app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "africa-zero"}
+
+
+@app.get("/debug/db-status")
+def debug_db_status():
+    """Debug endpoint to check database seed status."""
+    from app.models.database import get_db, get_db_path
+    db_path = get_db_path()
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+
+    def count_table(name):
+        try:
+            cursor.execute(f"SELECT COUNT(*) FROM {name}")
+            return cursor.fetchone()[0]
+        except Exception as e:
+            return f"error: {str(e)}"
+
+    status = {
+        "db_path": db_path,
+        "is_postgres": str(db_path).startswith("postgres"),
+        "tables": {
+            "africa_countries": count_table("africa_countries"),
+            "hs_codes": count_table("hs_codes"),
+            "freight_routes": count_table("freight_routes"),
+            "cert_guides": count_table("cert_guides"),
+            "suppliers": count_table("suppliers"),
+            "users": count_table("users"),
+        }
+    }
+    conn.close()
+    return status
+
+
+@app.post("/debug/reinit-db")
+def debug_reinit_db():
+    """Force reinitialize database schema and seed data."""
+    from app.models.database import get_db_path, init_db, seed_admin_user
+    try:
+        db_path = get_db_path()
+        init_db(db_path)
+        seed_admin_user(db_path)
+        return {"status": "ok", "message": "Database reinitialized successfully"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":
