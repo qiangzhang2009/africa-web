@@ -7,8 +7,6 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
 
 from app.routers import calculator, hs_codes, countries, subscribe
 from app.routers.auth import router as auth_router
@@ -41,7 +39,6 @@ _allow_origins = [
     "http://localhost:5173",
     "http://localhost:8000",
 ]
-_allow_credentials = True
 
 app = FastAPI(
     title="AfricaZero API",
@@ -53,59 +50,23 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allow_origins,
-    allow_credentials=_allow_credentials,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-@app.api_route("/{path:path}", methods=["OPTIONS"])
-async def options_handler(request: Request, path: str):
-    """Handle all OPTIONS preflight requests before reaching any route handler."""
-    origin = request.headers.get("origin", "*")
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
-            "Access-Control-Max-Age": "600",
-        },
-    )
-
-
-app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
-app.include_router(hs_codes.router, prefix="/api/v1", tags=["HS编码查询"])
-app.include_router(countries.router, prefix="/api/v1", tags=["国家信息"])
-app.include_router(subscribe.router, prefix="/api/v1", tags=["订阅查询"])
-app.include_router(auth_router, prefix="/api/v1", tags=["用户认证"])
-app.include_router(subscription_router, prefix="/api/v1", tags=["订阅管理"])
-app.include_router(api_keys_router, prefix="/api/v1", tags=["API密钥管理"])
-app.include_router(admin_router, prefix="/api/v1", tags=["管理后台"])
-app.include_router(freight_router, prefix="/api/v1", tags=["物流成本估算"])
-app.include_router(certificate_router, prefix="/api/v1", tags=["原产地证书办理"])
-app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok", "service": "africa-zero"}
-
-
-@app.get("/debug/calc-tariff")
-def debug_calc_tariff():
+# Debug endpoints
+@app.get("/debug-tariff")
+def debug_tariff():
     """Debug tariff calculation."""
     import traceback, json
     from app.services import tariff as tariff_service
     from app.models.database import get_db_path, get_db
     try:
         result = tariff_service.calculate_tariff(
-            hs_code="0901",
-            origin_country="ET",
-            destination="CN",
-            fob_value=240,
-            db_path=get_db_path(),
+            hs_code="0901", origin_country="ET", destination="CN",
+            fob_value=240, db_path=get_db_path(),
         )
         bd = result.get("breakdown", {})
         total_val = bd.get("total_cost", 0) if isinstance(bd, dict) else 0
@@ -123,19 +84,16 @@ def debug_calc_tariff():
         return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
 
 
-@app.get("/debug/calc-import")
-def debug_calc_import():
+@app.get("/debug-import")
+def debug_import():
     """Debug import cost calculation."""
     import traceback, json
     from app.services import tariff as tariff_service
     from app.models.database import get_db_path, get_db
     try:
         result = tariff_service.calculate_import_cost(
-            product_name="咖啡生豆",
-            quantity_kg=30,
-            fob_per_kg=8,
-            origin="ET",
-            db_path=get_db_path(),
+            product_name="咖啡生豆", quantity_kg=30, fob_per_kg=8,
+            origin="ET", db_path=get_db_path(),
         )
         bd = result.get("breakdown")
         if bd and hasattr(bd, "model_dump"):
@@ -154,28 +112,28 @@ def debug_calc_import():
         )
         conn.commit()
         conn.close()
-        return {"success": True, "total": total_val, "result_keys": list(result.keys())}
+        return {"success": True, "total": total_val, "keys": list(result.keys())}
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
 
 
-@app.get("/debug/calc-outer")
-def debug_calc_outer():
-    """Debug the OUTER calculator router function."""
-    import traceback, json
-    from app.models.database import get_db_path, get_db, get_db as _get_db
-    try:
-        # Step 1: get tariff result
-        from app.services import tariff as tariff_service
-        result = tariff_service.calculate_tariff(
-            hs_code="0901", origin_country="ET", destination="CN",
-            fob_value=240, db_path=get_db_path(),
-        )
-        # Step 2: json.dumps
-        json_str = json.dumps(result)
-        return {"step1": "tariff ok", "step2": "json ok", "keys": list(result.keys())}
-    except Exception as e:
-        return {"error": str(e), "type": type(e).__name__, "tb": traceback.format_exc()[-800:]}
+# API Routers
+app.include_router(calculator.router, prefix="/api/v1", tags=["关税与成本计算"])
+app.include_router(hs_codes.router, prefix="/api/v1", tags=["HS编码查询"])
+app.include_router(countries.router, prefix="/api/v1", tags=["国家信息"])
+app.include_router(subscribe.router, prefix="/api/v1", tags=["订阅查询"])
+app.include_router(auth_router, prefix="/api/v1", tags=["用户认证"])
+app.include_router(subscription_router, prefix="/api/v1", tags=["订阅管理"])
+app.include_router(api_keys_router, prefix="/api/v1", tags=["API密钥管理"])
+app.include_router(admin_router, prefix="/api/v1", tags=["管理后台"])
+app.include_router(freight_router, prefix="/api/v1", tags=["物流成本估算"])
+app.include_router(certificate_router, prefix="/api/v1", tags=["原产地证书办理"])
+app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "africa-zero"}
 
 
 if __name__ == "__main__":
