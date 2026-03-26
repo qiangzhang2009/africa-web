@@ -25,6 +25,54 @@ TIER_DURATION_DAYS = {
     "enterprise": 365,
 }
 FREE_DAILY_QUOTA = 3
+# 联系方式查看每日配额
+CONTACT_VIEW_DAILY_QUOTA = {
+    "free": 3,
+    "pro": 20,
+    "enterprise": 999999,  # 无限制
+}
+
+
+def _get_today_str() -> str:
+    """Return today's date as YYYY-MM-DD string."""
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _get_user_contact_view_quota(user_id: int, tier: str) -> dict:
+    """Get user's contact view quota for today."""
+    quota = CONTACT_VIEW_DAILY_QUOTA.get(tier, 0)
+    if tier == "enterprise":
+        return {"remaining": -1, "total": -1, "unlimited": True}
+
+    conn = get_db(DB_PATH)
+    cursor = conn.cursor()
+    today = _get_today_str()
+    cursor.execute(
+        "SELECT COUNT(*) as cnt FROM supplier_contact_views WHERE user_id = ? AND viewed_at >= ?",
+        (user_id, f"{today} 00:00:00")
+    )
+    viewed_today = cursor.fetchone()["cnt"]
+    conn.close()
+
+    remaining = max(0, quota - viewed_today)
+    return {
+        "remaining": remaining,
+        "total": quota,
+        "unlimited": False,
+        "viewed_today": viewed_today,
+    }
+
+
+def _record_contact_view(user_id: int, supplier_id: int) -> None:
+    """Record that a user viewed a supplier's contact info."""
+    conn = get_db(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO supplier_contact_views (user_id, supplier_id) VALUES (?, ?)",
+        (user_id, supplier_id)
+    )
+    conn.commit()
+    conn.close()
 
 
 def _get_user_subscription_info(user_id: int) -> dict:
@@ -74,6 +122,9 @@ def _get_user_subscription_info(user_id: int) -> dict:
 
     remaining_queries = None if tier != "free" else FREE_DAILY_QUOTA
 
+    # 获取联系方式查看配额
+    contact_view_quota = _get_user_contact_view_quota(user_id, tier)
+
     def _ts(v):
         if v is None:
             return None
@@ -89,6 +140,7 @@ def _get_user_subscription_info(user_id: int) -> dict:
         "days_remaining": days_remaining,
         "api_enabled": api_enabled,
         "sub_accounts_remaining": sub_accounts_remaining,
+        "contact_view_quota": contact_view_quota,
         "user": UserResponse(
             id=row["id"],
             email=row["email"],

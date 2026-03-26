@@ -172,6 +172,13 @@ class SubscriptionCheck(BaseModel):
     wechat_id: Optional[str] = None
 
 
+class ContactViewQuota(BaseModel):
+    remaining: int
+    total: int
+    unlimited: bool = False
+    viewed_today: int = 0
+
+
 class SubscriptionStatus(BaseModel):
     tier: str
     expires_at: Optional[str]
@@ -180,6 +187,7 @@ class SubscriptionStatus(BaseModel):
     days_remaining: Optional[int] = None
     api_enabled: bool = False
     sub_accounts_remaining: int = 0
+    contact_view_quota: ContactViewQuota
     user: Optional[UserResponse] = None
 
 

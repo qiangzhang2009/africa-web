@@ -310,10 +310,49 @@ async def list_supplier_categories():
     return sorted(list(prefixes))
 
 
+# ─── Contact view helpers ──────────────────────────────────────────────────────
+from app.routers.subscription import (
+    _get_user_contact_view_quota,
+    _record_contact_view,
+    CONTACT_VIEW_DAILY_QUOTA,
+)
+
+
+def _can_view_contact(user_tier: str, quota_info: dict) -> bool:
+    """Check if user can view contact info based on tier and quota."""
+    if user_tier == "enterprise":
+        return True
+    return quota_info.get("remaining", 0) > 0
+
+
+def _mask_contact_info(contact: str | None, mask_type: str = "email") -> str:
+    """Mask contact info for privacy. Returns empty string if contact is None."""
+    if not contact:
+        return ""
+    if mask_type == "email":
+        parts = contact.split("@")
+        if len(parts) == 2:
+            name = parts[0]
+            domain = parts[1]
+            if len(name) <= 2:
+                masked = name + "***"
+            else:
+                masked = name[:2] + "***"
+            return f"{masked}@{domain}"
+        return contact[:3] + "***"
+    elif mask_type == "phone":
+        if len(contact) <= 4:
+            return "***" + contact
+        return "***" + contact[-4:]
+    return contact[:3] + "***"
+
+
 @router.get("/suppliers/{supplier_id}")
-async def get_supplier(supplier_id: int):
+async def get_supplier(supplier_id: int, current_user: Optional[dict] = Depends(get_optional_user)):
     """
     Get detailed supplier information.
+    - For authenticated users: returns full info (contact fields included, subject to quota)
+    - For unauthenticated users: returns basic info without contact details
     """
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
@@ -333,6 +372,52 @@ async def get_supplier(supplier_id: int):
 
     result = _supplier_row_to_model(row)
     result["country_name_zh"] = country_row["name_zh"] if country_row else row["country"]
+
+    # Check authentication for contact info
+    if not current_user:
+        # Unauthenticated users cannot see contact info
+        result["contact_name"] = None
+        result["contact_email"] = None
+        result["contact_phone"] = None
+        result["website"] = None
+        result["_contact_visible"] = False
+        result["_contact_reason"] = "login_required"
+        return result
+
+    # Get user's subscription info
+    from app.routers.subscription import _get_user_subscription_info
+    sub_info = _get_user_subscription_info(current_user["user_id"])
+    tier = sub_info["tier"]
+
+    # Enterprise users see everything
+    if tier == "enterprise":
+        result["_contact_visible"] = True
+        result["_contact_unlimited"] = True
+        result["_contact_reason"] = "enterprise"
+        return result
+
+    # Pro/Free users - check quota
+    quota_info = sub_info.get("contact_view_quota", {})
+    can_view = _can_view_contact(tier, quota_info)
+
+    if can_view:
+        # Record the view
+        _record_contact_view(current_user["user_id"], supplier_id)
+        result["_contact_visible"] = True
+        result["_contact_unlimited"] = False
+        result["_contact_reason"] = "quota_ok"
+        result["_contact_remaining"] = quota_info.get("remaining", 0) - 1
+    else:
+        # Quota exhausted - mask contact info
+        result["contact_email"] = _mask_contact_info(result.get("contact_email"), "email")
+        result["contact_phone"] = _mask_contact_info(result.get("contact_phone"), "phone")
+        result["contact_name"] = None  # Hide name when quota exhausted
+        result["website"] = None
+        result["_contact_visible"] = False
+        result["_contact_unlimited"] = False
+        result["_contact_reason"] = "quota_exhausted"
+        result["_contact_remaining"] = 0
+        result["_contact_total"] = quota_info.get("total", CONTACT_VIEW_DAILY_QUOTA.get(tier, 3))
 
     return result
 

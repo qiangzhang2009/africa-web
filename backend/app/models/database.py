@@ -476,6 +476,14 @@ CREATE TABLE IF NOT EXISTS supplier_reviews (
     created_at          TEXT DEFAULT (datetime('now'))
 );
 
+-- Supplier contact views (track who viewed contact info and when)
+CREATE TABLE IF NOT EXISTS supplier_contact_views (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id             INTEGER NOT NULL,
+    supplier_id         INTEGER NOT NULL,
+    viewed_at           TEXT DEFAULT (datetime('now'))
+);
+
 -- Certificate application records (user workflow tracking)
 CREATE TABLE IF NOT EXISTS cert_applications (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -508,6 +516,7 @@ CREATE INDEX IF NOT EXISTS idx_freight_origin   ON freight_routes(origin_country
 CREATE INDEX IF NOT EXISTS idx_cert_guides_country ON cert_guides(country_code);
 CREATE INDEX IF NOT EXISTS idx_suppliers_country ON suppliers(country);
 CREATE INDEX IF NOT EXISTS idx_supplier_reviews_sid ON supplier_reviews(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_contact_views_user ON supplier_contact_views(user_id);
 """
 
 
@@ -734,6 +743,14 @@ CREATE TABLE IF NOT EXISTS supplier_reviews (
     created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Supplier contact views (track who viewed contact info and when)
+CREATE TABLE IF NOT EXISTS supplier_contact_views (
+    id                  SERIAL PRIMARY KEY,
+    user_id             INTEGER NOT NULL,
+    supplier_id         INTEGER NOT NULL,
+    viewed_at           TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_calc_user     ON calculations(user_id);
 CREATE INDEX IF NOT EXISTS idx_calc_day      ON calculations(created_at);
 CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
@@ -744,6 +761,7 @@ CREATE INDEX IF NOT EXISTS idx_freight_origin ON freight_routes(origin_country);
 CREATE INDEX IF NOT EXISTS idx_cert_guides_country ON cert_guides(country_code);
 CREATE INDEX IF NOT EXISTS idx_suppliers_country ON suppliers(country);
 CREATE INDEX IF NOT EXISTS idx_supplier_reviews_sid ON supplier_reviews(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_contact_views_user ON supplier_contact_views(user_id);
 """
 
 

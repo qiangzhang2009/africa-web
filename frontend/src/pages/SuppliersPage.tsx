@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Globe, Search, CheckCircle,
-  ArrowRight, MapPin, ExternalLink, MessageSquare, X,
+  ArrowRight, MapPin, ExternalLink, MessageSquare, X, Lock,
 } from 'lucide-react'
 import {
   searchSuppliers, listSupplierCountries,
@@ -247,38 +247,76 @@ function SupplierDetail({
           {isLoggedIn ? (
             showContact ? (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                <div className="text-sm font-semibold text-green-800 mb-3">联系方式</div>
-                <div className="space-y-2">
-                  {supplier.contact_name && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500 w-16">联系人：</span>
-                      <span className="text-slate-800">{supplier.contact_name}</span>
-                    </div>
-                  )}
-                  {supplier.contact_email && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500 w-16">邮箱：</span>
-                      <a href={`mailto:${supplier.contact_email}`} className="text-blue-600 hover:underline">{supplier.contact_email}</a>
-                    </div>
-                  )}
-                  {supplier.contact_phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500 w-16">电话：</span>
-                      <span className="text-slate-800">{supplier.contact_phone}</span>
-                    </div>
-                  )}
-                  {supplier.website && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500 w-16">网站：</span>
-                      <a href={supplier.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                        {supplier.website} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  )}
-                  {!supplier.contact_name && !supplier.contact_email && !supplier.contact_phone && !supplier.website && (
-                    <div className="text-sm text-slate-500">暂无联系方式信息</div>
+                <div className="text-sm font-semibold text-green-800 mb-3 flex items-center justify-between">
+                  <span>联系方式</span>
+                  {(supplier as any)._contact_remaining !== undefined && (supplier as any)._contact_remaining >= 0 && (
+                    <span className="text-xs font-normal text-green-600">
+                      剩余查看次数: {(supplier as any)._contact_remaining}
+                    </span>
                   )}
                 </div>
+                {(supplier as any)._contact_reason === 'quota_exhausted' ? (
+                  <div className="text-center py-4">
+                    <div className="text-sm text-slate-600 mb-3">
+                      今日查看次数已用完
+                      {(supplier as any)._contact_total && (
+                        <span className="text-slate-400">（每日限额 {(supplier as any)._contact_total} 次）</span>
+                      )}
+                    </div>
+                    {supplier.contact_email && (
+                      <div className="flex items-center gap-2 text-sm mb-2">
+                        <span className="text-slate-500 w-16">邮箱：</span>
+                        <span className="text-slate-400">{supplier.contact_email}</span>
+                        <Lock className="w-3 h-3 text-slate-400" title="配额已用完" />
+                      </div>
+                    )}
+                    {supplier.contact_phone && (
+                      <div className="flex items-center gap-2 text-sm mb-2">
+                        <span className="text-slate-500 w-16">电话：</span>
+                        <span className="text-slate-400">{supplier.contact_phone}</span>
+                        <Lock className="w-3 h-3 text-slate-400" title="配额已用完" />
+                      </div>
+                    )}
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      升级解锁无限查看
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {supplier.contact_name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-500 w-16">联系人：</span>
+                        <span className="text-slate-800">{supplier.contact_name}</span>
+                      </div>
+                    )}
+                    {supplier.contact_email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-500 w-16">邮箱：</span>
+                        <a href={`mailto:${supplier.contact_email}`} className="text-blue-600 hover:underline">{supplier.contact_email}</a>
+                      </div>
+                    )}
+                    {supplier.contact_phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-500 w-16">电话：</span>
+                        <span className="text-slate-800">{supplier.contact_phone}</span>
+                      </div>
+                    )}
+                    {supplier.website && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-500 w-16">网站：</span>
+                        <a href={supplier.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                          {supplier.website} <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                    {!supplier.contact_name && !supplier.contact_email && !supplier.contact_phone && !supplier.website && (
+                      <div className="text-sm text-slate-500">暂无联系方式信息</div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <button
