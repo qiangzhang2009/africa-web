@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Query
-from app.models.database import get_db, get_db_path
+from app.models.database import get_db, get_db_path, _is_postgres
 from app.schemas import HSSearchResult
 from typing import Optional
 
@@ -40,6 +40,12 @@ DB_PATH = get_db_path()
 router = APIRouter()
 
 
+def _normalize_hs_sql(col: str) -> str:
+    """Return SQL to normalize HS code column for search (handles both SQLite and PostgreSQL)."""
+    # PostgreSQL REPLACE works the same way as SQLite
+    return f"REPLACE(REPLACE(REPLACE(REPLACE({col}, '.', ''), ' ', ''), '-', ''), '*', '')"
+
+
 def _normalize_hs(code: str) -> str:
     return code.replace(".", "").replace(" ", "").replace("-", "")
 
@@ -73,23 +79,30 @@ async def search_hs_codes(q: str = Query(..., min_length=1), limit: int = Query(
     normalized = _normalize_hs(q)
     results: list[dict] = []
 
+    # Build normalized column expressions for both SQLite and PostgreSQL
+    norm_hs_10 = _normalize_hs_sql("hs_10")
+    norm_hs_8 = _normalize_hs_sql("hs_8")
+    norm_hs_6 = _normalize_hs_sql("hs_6")
+    norm_hs_4 = _normalize_hs_sql("hs_4")
+
     # Exact or prefix HS code match
     try:
         cursor.execute(
-            """
+            f"""
             SELECT * FROM hs_codes
-            WHERE REPLACE(REPLACE(REPLACE(REPLACE(hs_10, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-               OR REPLACE(REPLACE(REPLACE(REPLACE(hs_8, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-               OR REPLACE(REPLACE(REPLACE(REPLACE(hs_6, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
-               OR REPLACE(REPLACE(REPLACE(REPLACE(hs_4, '.', ''), ' ', ''), '-', ''), '*', '') LIKE ?
+            WHERE {norm_hs_10} LIKE ?
+               OR {norm_hs_8} LIKE ?
+               OR {norm_hs_6} LIKE ?
+               OR {norm_hs_4} LIKE ?
             LIMIT ?
             """,
             (normalized + "%", normalized + "%", normalized + "%", normalized + "%", limit)
         )
         for row in cursor.fetchall():
             results.append(dict(row))
-    except Exception:
-        pass
+    except Exception as e:
+        # Log error for debugging but don't fail
+        print(f"HS code search error (code match): {e}")
 
     # Name fuzzy match
     if len(results) < limit:
@@ -101,8 +114,8 @@ async def search_hs_codes(q: str = Query(..., min_length=1), limit: int = Query(
             for row in cursor.fetchall():
                 if not any(r["hs_10"] == dict(row)["hs_10"] for r in results):
                     results.append(dict(row))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"HS code search error (name match): {e}")
 
     conn.close()
 
