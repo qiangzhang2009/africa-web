@@ -113,13 +113,21 @@ def debug_db_status():
 
 @app.post("/debug/reinit-db")
 def debug_reinit_db():
-    """Force reinitialize database schema and seed data."""
+    """
+    Reinitialize database schema (create missing tables/columns) WITHOUT overwriting existing data.
+    WARNING: This preserves all existing data. Use /debug/upsert-data to update reference data.
+    """
     from app.models.database import get_db_path, init_db, seed_admin_user
     try:
         db_path = get_db_path()
+        # init_db uses INSERT OR IGNORE / ON CONFLICT DO NOTHING, so existing data is preserved
         init_db(db_path)
         seed_admin_user(db_path)
-        return {"status": "ok", "message": "Database reinitialized successfully"}
+        return {
+            "status": "ok",
+            "message": "Database schema updated successfully. Existing data preserved.",
+            "warning": "This endpoint now preserves existing data. Use /debug/upsert-data to update reference tables."
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
