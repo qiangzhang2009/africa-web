@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app.routers import calculator, hs_codes, countries, subscribe
 from app.routers.auth import router as auth_router
@@ -164,6 +165,70 @@ def debug_export_all_data():
             "suppliers": get_table("suppliers"),
             "market_analysis": get_table("market_analysis"),
         }
+    finally:
+        conn.close()
+
+
+class DebugUpsertData(BaseModel):
+    africa_countries: list[dict] = []
+    hs_codes: list[dict] = []
+    cert_guides: list[dict] = []
+    suppliers: list[dict] = []
+    policy_rules: list[dict] = []
+    supplier_reviews: list[dict] = []
+
+
+@app.post("/debug/upsert-data")
+def debug_upsert_data(body: DebugUpsertData):
+    """Bulk upsert reference data. Deletes all existing rows and inserts new ones."""
+    from app.models.database import get_db, get_db_path
+    db_path = get_db_path()
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    is_pg = str(db_path).startswith("postgres")
+
+    def _adapt(sql: str) -> str:
+        if is_pg:
+            return sql.replace("?", "%s")
+        return sql
+
+    def _serialize(val):
+        if val is None:
+            return None
+        if isinstance(val, (dict, list)):
+            return json.dumps(val, ensure_ascii=False)
+        return str(val) if not isinstance(val, (int, float)) else val
+
+    def upsert_table(table: str, rows: list[dict]) -> int:
+        if not rows:
+            return 0
+        # Remove 'id' from columns (let DB auto-generate)
+        cols = [c for c in rows[0].keys() if c != "id"]
+        placeholders = ", ".join(["?"] * len(cols))
+        insert_sql = f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({placeholders})"
+        sql = _adapt(insert_sql)
+        try:
+            cursor.execute(f"DELETE FROM {table}")
+            for row in rows:
+                vals = [_serialize(row.get(c)) for c in cols]
+                cursor.execute(sql, vals)
+            return len(rows)
+        except Exception as e:
+            raise Exception(f"{table}: {e}")
+
+    results = {}
+    try:
+        results["africa_countries"] = upsert_table("africa_countries", body.africa_countries)
+        results["hs_codes"] = upsert_table("hs_codes", body.hs_codes)
+        results["cert_guides"] = upsert_table("cert_guides", body.cert_guides)
+        results["suppliers"] = upsert_table("suppliers", body.suppliers)
+        results["policy_rules"] = upsert_table("policy_rules", body.policy_rules)
+        results["supplier_reviews"] = upsert_table("supplier_reviews", body.supplier_reviews)
+        conn.commit()
+        return {"status": "ok", "inserted": results}
+    except Exception as e:
+        conn.rollback()
+        return {"status": "error", "message": str(e)}
     finally:
         conn.close()
 

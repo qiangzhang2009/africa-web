@@ -8,18 +8,18 @@ services:
   - type: web
     name: africa-web
     runtime: python
-    region: singapore
+    region: oregon
     plan: free
     repo: https://github.com/qiangzhang2009/africa-web
     branch: main
-    rootDir: africa-zero
-    buildCommand: pip install --no-cache -r backend/requirements.txt
+    rootDir: ""
+    buildCommand: pip install --no-cache-dir -r requirements.txt && cd backend && pip install --no-cache-dir -r requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     pythonVersion: "3.11"
     envVars:
       - key: PYTHONPATH
-        value: /opt/render/project/src/africa-zero
+        value: /opt/render/project/src/backend
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: DATABASE_URL
