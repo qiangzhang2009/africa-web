@@ -2825,7 +2825,22 @@ def init_db(db_path: str) -> None:
         Smart upsert for seeding: insert only rows whose unique key doesn't exist.
         Preserves any manual edits to existing records.
         Strategy: INSERT OR IGNORE for SQLite; ON CONFLICT DO NOTHING for PG.
+        
+        For PostgreSQL with substantial existing data, skip seeding to preserve
+        data synced via upload_enriched_data.py or sync_to_cloud.py.
         """
+        # Check if table already has data in PostgreSQL - skip seeding if so
+        if _is_postgres():
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                count = cursor.fetchone()["cnt"]
+                # If table has more than 50 rows, assume it's been synced externally
+                if count > 50:
+                    print(f"[SKIP] {table} has {count} rows, skipping seed")
+                    return
+            except Exception:
+                pass
+        
         try:
             if _is_postgres():
                 pg_sql = _to_pg_sql(insert_sql)
