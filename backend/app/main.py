@@ -2,6 +2,7 @@
 AfricaZero — FastAPI Backend
 Main entry point. Routes are mounted in app/routers/.
 """
+import json
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
