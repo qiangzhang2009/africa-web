@@ -176,6 +176,8 @@ class DebugUpsertData(BaseModel):
     suppliers: list[dict] = []
     policy_rules: list[dict] = []
     supplier_reviews: list[dict] = []
+    freight_routes: list[dict] = []
+    market_analysis: list[dict] = []
 
 
 @app.post("/debug/upsert-data")
@@ -224,6 +226,8 @@ def debug_upsert_data(body: DebugUpsertData):
         results["suppliers"] = upsert_table("suppliers", body.suppliers)
         results["policy_rules"] = upsert_table("policy_rules", body.policy_rules)
         results["supplier_reviews"] = upsert_table("supplier_reviews", body.supplier_reviews)
+        results["freight_routes"] = upsert_table("freight_routes", body.freight_routes)
+        results["market_analysis"] = upsert_table("market_analysis", body.market_analysis)
         conn.commit()
         return {"status": "ok", "inserted": results}
     except Exception as e:
