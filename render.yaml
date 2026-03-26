@@ -12,14 +12,14 @@ services:
     plan: free
     repo: https://github.com/qiangzhang2009/africa-web
     branch: main
-    rootDir: ""
+    rootDir: "africa-zero"
     buildCommand: pip install --no-cache-dir -r requirements.txt && cd backend && pip install --no-cache-dir -r requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     pythonVersion: "3.11"
     envVars:
       - key: PYTHONPATH
-        value: /opt/render/project/src/backend
+        value: /opt/render/project/src/africa-zero/backend
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: DATABASE_URL
@@ -35,7 +35,7 @@ services:
     plan: free
     repo: https://github.com/qiangzhang2009/africa-web
     branch: main
-    rootDir: ""
+    rootDir: "africa-zero"
     buildCommand: cd frontend && npm install && npm run build
     startCommand: npx serve frontend/dist -l $PORT -s
     healthCheckPath: /

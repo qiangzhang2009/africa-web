@@ -267,14 +267,14 @@ function SupplierDetail({
                       <div className="flex items-center gap-2 text-sm mb-2">
                         <span className="text-slate-500 w-16">邮箱：</span>
                         <span className="text-slate-400">{supplier.contact_email}</span>
-                        <Lock className="w-3 h-3 text-slate-400" title="配额已用完" />
+                        <Lock className="w-3 h-3 text-slate-400" />
                       </div>
                     )}
                     {supplier.contact_phone && (
                       <div className="flex items-center gap-2 text-sm mb-2">
                         <span className="text-slate-500 w-16">电话：</span>
                         <span className="text-slate-400">{supplier.contact_phone}</span>
-                        <Lock className="w-3 h-3 text-slate-400" title="配额已用完" />
+                        <Lock className="w-3 h-3 text-slate-400" />
                       </div>
                     )}
                     <button
