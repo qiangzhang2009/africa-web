@@ -126,7 +126,9 @@ export interface ImportCostResult {
 export interface HSSearchResult {
   hs_10: string | null
   name_zh: string
+  name_en?: string
   mfn_rate: number
+  vat_rate?: number
   category: string | null
   match_score: number
   zero_tariff?: boolean | null   // 新增：是否零关税

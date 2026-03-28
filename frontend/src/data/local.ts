@@ -179,13 +179,6 @@ export const localData = {
     }
 
     const results = [...exactMatches, ...nameMatches]
-    const hasNonZero = results.some((r) => r.zero_tariff === false)
-    const guidanceMessages = [...new Set(results.map((r) => r.category_guidance).filter(Boolean))]
-    const summaryGuidance = hasNonZero && guidanceMessages.length > 0
-      ? '提示：以上品类中，非零关税项已标注，进口需缴纳MFN关税。部分品类另有3C认证要求。'
-      : null
-
-    // 返回结果（包装为与 api.ts 相同的格式）
     return results.slice(0, limit)
   },
 
@@ -335,8 +328,8 @@ export const localData = {
       filtered = filtered.filter(
         (s) =>
           s.name_zh?.toLowerCase().includes(kw) ||
-          s.name_en?.toLowerCase().includes(kw) ||
-          s.main_products?.toLowerCase().includes(kw),
+          (s.name_en ?? '').toLowerCase().includes(kw) ||
+          String(s.main_products ?? '').toLowerCase().includes(kw),
       )
     }
     if (params?.hs_code) {
@@ -453,4 +446,8 @@ export async function searchSuppliers(params?: {
 
 export async function listSupplierCountries() {
   return localData.listSupplierCountries()
+}
+
+export async function getSupplier(id: number): Promise<Supplier | null> {
+  return localData.getSupplier(id)
 }
