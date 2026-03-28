@@ -6,9 +6,10 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
-  listFreightCountries, listDestPorts, estimateFreightCost,
+  listFreightCountries, listDestPorts,
   listFreightRoutes,
-} from '../utils/api'
+} from '../data/local'
+import { estimateFreightCost } from '../utils/api'
 import { track } from '../utils/track'
 import type { FreightRoute, FreightEstimateResult } from '../types'
 

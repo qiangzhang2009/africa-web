@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '../hooks/useAppStore'
-import { calculateTariff, searchHSCodes, getDailyUsage } from '../utils/api'
+import { calculateTariff, getDailyUsage } from '../utils/api'
+import { searchHSCodes } from '../data/local'
 import { track } from '../utils/track'
 import type { TariffCalcResult, DestinationMarket, HSSearchResult } from '../types'
 

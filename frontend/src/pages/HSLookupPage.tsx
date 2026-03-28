@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { searchHSCodes } from '../utils/api'
+import { searchHSCodes } from '../data/local'
 import { track } from '../utils/track'
 import type { HSSearchResult } from '../types'
 

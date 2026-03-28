@@ -6,8 +6,8 @@ import {
 } from 'lucide-react'
 import {
   listCertGuides, getCertGuide, getCertSteps,
-  generateCertDocument,
-} from '../utils/api'
+} from '../data/local'
+import { generateCertDocument } from '../utils/api'
 import { useAppStore } from '../hooks/useAppStore'
 import type { CertGuide, CertStepsResponse, CertDocGenerateResult } from '../types'
 

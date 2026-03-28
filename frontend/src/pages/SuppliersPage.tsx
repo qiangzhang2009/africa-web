@@ -6,7 +6,10 @@ import {
 } from 'lucide-react'
 import {
   searchSuppliers, listSupplierCountries,
-  getSupplier, getSupplierReviews,
+  getSupplier,
+} from '../data/local'
+import {
+  getSupplierReviews,
   getSupplierCompare,
 } from '../utils/api'
 import { useAppStore } from '../hooks/useAppStore'

@@ -1,0 +1,26 @@
+# AfricaZero Scraper Dependencies
+# 安装命令: pip install -r requirements-scrapers.txt
+
+# 核心爬虫引擎
+scrapling==1.2.1
+
+# 异步HTTP请求
+httpx==0.27.2
+aiohttp==3.10.5
+
+# 数据存储
+# SQLite 随 Python 内置，无需单独安装
+
+# 实用工具
+python-dateutil==2.9.0
+tqdm==4.67.1
+rich==13.9.4
+
+# 速率限制
+ratelimit==2.2.1
+
+# 数据验证
+pydantic==2.10.3
+
+# 协程支持
+asyncio-atexit==1.0.1

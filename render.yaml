@@ -1,5 +1,10 @@
 # render.yaml — Render 自动部署配置
-# AfricaZero 前端 + 后端服务
+# AfricaZero 后端 API 服务（Vercel 负责前端）
+#
+# 架构说明：
+#   前端: Vercel (africa.zxqconsulting.com) + Vercel rewrites → 本文件
+#   后端: Render FastAPI → Neon PostgreSQL
+#
 previewsEnabled: false
 autoDeploy: true
 
@@ -24,23 +29,5 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false
-        # PostgreSQL connection string from Neon (set in Render Dashboard → Environment)
       - key: POETRY_DISABLED
         value: "1"
-
-  # ── Frontend (SPA via Node.js server) ──────────────────────────────────────────
-  - type: web
-    name: africa-web-1
-    region: singapore
-    plan: free
-    repo: https://github.com/qiangzhang2009/africa-web
-    branch: main
-    rootDir: "africa-zero"
-    buildCommand: cd frontend && npm install && npm run build
-    startCommand: npx serve frontend/dist -l $PORT -s
-    healthCheckPath: /
-    envVars:
-      - key: VITE_API_BASE
-        value: https://africa-web-wuxs.onrender.com
-      - key: NODE_VERSION
-        value: "20"
