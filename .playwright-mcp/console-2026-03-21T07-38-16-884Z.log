@@ -1,0 +1,2 @@
+[     237ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://127.0.0.1:19036/favicon.ico:0
+[  101031ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://127.0.0.1:19036/cookie-picker/import:0

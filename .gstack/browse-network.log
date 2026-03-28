@@ -1,0 +1,7 @@
+[2026-03-20T02:50:55.258Z] GET https://africa.zxqconsulting.com/ → pending (?ms, ?B)
+[2026-03-20T02:50:56.382Z] GET https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap → pending (?ms, ?B)
+[2026-03-20T02:50:56.382Z] GET https://africa.zxqconsulting.com/assets/index-CQ9n-2xv.js → pending (?ms, ?B)
+[2026-03-20T02:50:56.382Z] GET https://africa.zxqconsulting.com/assets/index-BLw2tsiu.css → pending (?ms, ?B)
+[2026-03-20T02:50:56.382Z] GET https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516 → pending (?ms, ?B)
+[2026-03-20T02:50:57.209Z] GET https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2 → pending (?ms, ?B)
+[2026-03-20T02:50:57.531Z] POST https://africa.zxqconsulting.com/cdn-cgi/rum? → 204 (260ms, ?B)
