@@ -653,8 +653,6 @@ CREATE TABLE IF NOT EXISTS freight_routes (
     updated_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-# ─── Product Selection / Market Analysis ──────────────────────────────────────
-# 非洲选品清单：按品类、国家、目标市场、进口要求等维度建立选品决策数据库
 CREATE TABLE IF NOT EXISTS market_analysis (
     id                  SERIAL PRIMARY KEY,
     category            TEXT NOT NULL,          # 品类大类，如"咖啡"、"可可"、"坚果"
