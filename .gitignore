@@ -14,9 +14,12 @@ frontend/dist/
 .env
 .env.local
 
-# Database
-*.db
-data/
+# Database (backend local SQLite — must NOT be in git)
+backend/data/
+backend/*.db
+# Root data/ contains local dev SQLite (not for production)
+# Note: frontend/src/data/ IS tracked — do NOT add "**/data/" here
+/data/
 
 # OS
 .DS_Store

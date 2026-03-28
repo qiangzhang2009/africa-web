@@ -1,0 +1,375 @@
+{
+  "countries": [
+    {
+      "code": "ET",
+      "name_zh": "埃塞俄比亚",
+      "name_en": "Ethiopia",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "ZA",
+      "name_zh": "南非",
+      "name_en": "South Africa",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "KE",
+      "name_zh": "肯尼亚",
+      "name_en": "Kenya",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "GH",
+      "name_zh": "加纳",
+      "name_en": "Ghana",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "CI",
+      "name_zh": "科特迪瓦",
+      "name_en": "Côte d'Ivoire",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "CM",
+      "name_zh": "喀麦隆",
+      "name_en": "Cameroon",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "TZ",
+      "name_zh": "坦桑尼亚",
+      "name_en": "Tanzania",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "RW",
+      "name_zh": "卢旺达",
+      "name_en": "Rwanda",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "UG",
+      "name_zh": "乌干达",
+      "name_en": "Uganda",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "MZ",
+      "name_zh": "莫桑比克",
+      "name_en": "Mozambique",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "NG",
+      "name_zh": "尼日利亚",
+      "name_en": "Nigeria",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "EG",
+      "name_zh": "埃及",
+      "name_en": "Egypt",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "MA",
+      "name_zh": "摩洛哥",
+      "name_en": "Morocco",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "DZ",
+      "name_zh": "阿尔及利亚",
+      "name_en": "Algeria",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "TN",
+      "name_zh": "突尼斯",
+      "name_en": "Tunisia",
+      "in_afcfta": 1,
+      "has_epa": 1
+    },
+    {
+      "code": "SD",
+      "name_zh": "苏丹",
+      "name_en": "Sudan",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "AO",
+      "name_zh": "安哥拉",
+      "name_en": "Angola",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "BJ",
+      "name_zh": "贝宁",
+      "name_en": "Benin",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "BW",
+      "name_zh": "博茨瓦纳",
+      "name_en": "Botswana",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "BF",
+      "name_zh": "布基纳法索",
+      "name_en": "Burkina Faso",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "BI",
+      "name_zh": "布隆迪",
+      "name_en": "Burundi",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "CV",
+      "name_zh": "佛得角",
+      "name_en": "Cape Verde",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "CF",
+      "name_zh": "中非",
+      "name_en": "Central African Republic",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "TD",
+      "name_zh": "乍得",
+      "name_en": "Chad",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "CD",
+      "name_zh": "刚果（金）",
+      "name_en": "DR Congo",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "CG",
+      "name_zh": "刚果（布）",
+      "name_en": "Republic of the Congo",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "DJ",
+      "name_zh": "吉布提",
+      "name_en": "Djibouti",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "GQ",
+      "name_zh": "赤道几内亚",
+      "name_en": "Equatorial Guinea",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "ER",
+      "name_zh": "厄立特里亚",
+      "name_en": "Eritrea",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "KM",
+      "name_zh": "科摩罗",
+      "name_en": "Comoros",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "GA",
+      "name_zh": "加蓬",
+      "name_en": "Gabon",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "GM",
+      "name_zh": "冈比亚",
+      "name_en": "Gambia",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "GN",
+      "name_zh": "几内亚",
+      "name_en": "Guinea",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "GW",
+      "name_zh": "几内亚比绍",
+      "name_en": "Guinea-Bissau",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "LS",
+      "name_zh": "莱索托",
+      "name_en": "Lesotho",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "LR",
+      "name_zh": "利比里亚",
+      "name_en": "Liberia",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "LY",
+      "name_zh": "利比亚",
+      "name_en": "Libya",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "MG",
+      "name_zh": "马达加斯加",
+      "name_en": "Madagascar",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "MW",
+      "name_zh": "马拉维",
+      "name_en": "Malawi",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "ML",
+      "name_zh": "马里",
+      "name_en": "Mali",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "MR",
+      "name_zh": "毛里塔尼亚",
+      "name_en": "Mauritania",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "MU",
+      "name_zh": "毛里求斯",
+      "name_en": "Mauritius",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "NA",
+      "name_zh": "纳米比亚",
+      "name_en": "Namibia",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "NE",
+      "name_zh": "尼日尔",
+      "name_en": "Niger",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "SN",
+      "name_zh": "塞内加尔",
+      "name_en": "Senegal",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "ST",
+      "name_zh": "圣多美和普林西比",
+      "name_en": "Sao Tome and Principe",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "SC",
+      "name_zh": "塞舌尔",
+      "name_en": "Seychelles",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "SL",
+      "name_zh": "塞拉利昂",
+      "name_en": "Sierra Leone",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "SO",
+      "name_zh": "索马里",
+      "name_en": "Somalia",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "SS",
+      "name_zh": "南苏丹",
+      "name_en": "South Sudan",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "TG",
+      "name_zh": "多哥",
+      "name_en": "Togo",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "ZM",
+      "name_zh": "赞比亚",
+      "name_en": "Zambia",
+      "in_afcfta": 1,
+      "has_epa": 0
+    },
+    {
+      "code": "ZW",
+      "name_zh": "津巴布韦",
+      "name_en": "Zimbabwe",
+      "in_afcfta": 1,
+      "has_epa": 0
+    }
+  ]
+}

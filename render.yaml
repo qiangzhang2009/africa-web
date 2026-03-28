@@ -18,9 +18,9 @@ services:
     repo: https://github.com/qiangzhang2009/africa-web
     branch: main
     rootDir: "africa-zero"
-    buildCommand: pip install --no-cache-dir -r requirements.txt && cd backend && pip install --no-cache-dir -r requirements.txt
+    buildCommand: cd backend && pip install --no-cache-dir -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    directory: "africa-zero/backend"
+    directory: backend
     healthCheckPath: /health
     pythonVersion: "3.11"
     envVars:
