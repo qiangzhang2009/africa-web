@@ -655,25 +655,25 @@ CREATE TABLE IF NOT EXISTS freight_routes (
 
 CREATE TABLE IF NOT EXISTS market_analysis (
     id                  SERIAL PRIMARY KEY,
-    category            TEXT NOT NULL,          # 品类大类，如"咖啡"、"可可"、"坚果"
-    product_name_zh     TEXT NOT NULL,          # 产品中文名
-    product_name_en     TEXT,                   # 产品英文名
-    main_hs_codes       TEXT NOT NULL,         # 主要HS编码（竖线分隔）
-    origin_countries     TEXT NOT NULL,          # 主要原产国（竖线分隔，如"ET|KE|TZ"）
-    target_china_market TEXT NOT NULL,          # 中国市场定位，如"精品电商"、"大宗贸易"、"食品加工"
-    import_requirements  TEXT,                  # 进口要求：检验检疫/许可证等
-    zero_tariff_china   INTEGER DEFAULT 0,      # 中国是否零关税
-    tariff_rate         REAL,                  # 中国MFN税率
-    market_size_usd     TEXT,                  # 全球市场规模估算（如"$120亿美元"）
-    growth_rate         TEXT,                   # 年增长率
-    top_importers       TEXT,                   # 主要进口国
-    supplier_countries  TEXT,                   # 主要供应商国家
-    key_suppliers       TEXT,                  # 知名供应商
-    certification_needs TEXT,                   # 需要的认证（如有机/Fairtrade/雨林联盟）
-    logistics_notes     TEXT,                   # 物流注意事项
-    risk_factors        TEXT,                   # 风险因素
-    recommendation      TEXT,                   # 综合推荐理由
-    status              TEXT DEFAULT 'active',  # active / hidden / featured
+    category            TEXT NOT NULL,          -- 品类大类
+    product_name_zh     TEXT NOT NULL,          -- 产品中文名
+    product_name_en     TEXT,                   -- 产品英文名
+    main_hs_codes       TEXT NOT NULL,          -- 主要HS编码（竖线分隔）
+    origin_countries     TEXT NOT NULL,          -- 主要原产国（竖线分隔）
+    target_china_market TEXT NOT NULL,          -- 中国市场定位
+    import_requirements  TEXT,                  -- 进口要求
+    zero_tariff_china   INTEGER DEFAULT 0,       -- 中国是否零关税
+    tariff_rate         REAL,                   -- 中国MFN税率
+    market_size_usd     TEXT,                   -- 全球市场规模估算
+    growth_rate         TEXT,                   -- 年增长率
+    top_importers       TEXT,                   -- 主要进口国
+    supplier_countries  TEXT,                   -- 主要供应商国家
+    key_suppliers       TEXT,                   -- 知名供应商
+    certification_needs TEXT,                   -- 需要的认证
+    logistics_notes     TEXT,                   -- 物流注意事项
+    risk_factors        TEXT,                   -- 风险因素
+    recommendation      TEXT,                    -- 综合推荐理由
+    status              TEXT DEFAULT 'active',   -- active / hidden / featured
     updated_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
