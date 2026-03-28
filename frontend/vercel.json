@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://africa-web-wuxs.onrender.com/api/$1"
+      "destination": "https://africa-web-bw51.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
