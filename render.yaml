@@ -5,6 +5,10 @@
 #   前端: Vercel (africa.zxqconsulting.com) + Vercel rewrites → 本文件
 #   后端: Render FastAPI → Neon PostgreSQL
 #
+# 重要：Sensitive env vars (DATABASE_URL, JWT_SECRET, DEEPSEEK_API_KEY)
+# 需要在 Render Dashboard → Service → Environment 手动设置！
+# render.yaml 的 envVars 只支持 non-sensitive values。
+#
 previewsEnabled: false
 autoDeploy: true
 
@@ -17,19 +21,16 @@ services:
     plan: free
     repo: https://github.com/qiangzhang2009/africa-web
     branch: main
-    # Note: repo root is /opt/render/project/src/africa-web/ — use backend/ (NOT africa-zero/backend/)
     buildCommand: pip install --no-cache-dir -r backend/requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     pythonVersion: "3.11"
     envVars:
       - key: PYTHONPATH
-        value: /opt/render/project/src/africa-web/backend
-      - key: DATABASE_URL
-        sync: false
-      - key: DEEPSEEK_API_KEY
-        sync: false
-      - key: JWT_SECRET
-        sync: false
+        value: /opt/render/project/src/backend
       - key: POETRY_DISABLED
         value: "1"
+      # IMPORTANT: Set these in Render Dashboard → Environment:
+      # - DATABASE_URL: postgresql://neondb_owner:npg_xxx@ep-mute-grass-xxx/neondb?sslmode=require
+      # - JWT_SECRET: your-production-jwt-secret
+      # - DEEPSEEK_API_KEY: your-api-key

@@ -248,7 +248,27 @@ export const localData = {
    * 获取原产地证书指南列表
    */
   async listCertGuides(country?: string): Promise<CertGuide[]> {
-    const guides = await _fetchCached<CertGuide[]>(DATA_PATHS.cert_guides)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw: any[] = await _fetchCached<any[]>(DATA_PATHS.cert_guides)
+
+    function parseListField(val: string | string[] | null | undefined): string[] {
+      if (!val) return []
+      if (Array.isArray(val)) return val
+      try { return JSON.parse(val) } catch { return [] }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const guides: CertGuide[] = raw.map((r: any): CertGuide => ({
+      ...r,
+      doc_requirements: parseListField(r.doc_requirements),
+      step_sequence: parseListField(r.step_sequence),
+      api_available: Boolean(r.api_available),
+      fee_usd_min: Number(r.fee_usd_min ?? 0),
+      fee_usd_max: Number(r.fee_usd_max ?? 0),
+      days_min: Number(r.days_min ?? 0),
+      days_max: Number(r.days_max ?? 0),
+    }))
+
     if (country) {
       return guides.filter((g) => g.country_code === country.toUpperCase())
     }

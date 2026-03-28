@@ -2947,7 +2947,7 @@
     {
       "name_zh": "多哥磷酸盐出口公司（SNP）",
       "name_en": "Société Nationale des Phosphates du Togo",
-      "country": "TJ",
+      "country": "TG",
       "region": "多哥",
       "main_products": "磷酸盐|过磷酸钙|化肥",
       "main_hs_codes": "2510|3103",
@@ -2970,7 +2970,7 @@
     {
       "name_zh": "多哥可可出口商（TCE）",
       "name_en": "Togo Cocoa & Coffee Exporters",
-      "country": "TJ",
+      "country": "TG",
       "region": "多哥",
       "main_products": "可可|咖啡|可可脂",
       "main_hs_codes": "1801|0901|1803",
@@ -4166,7 +4166,7 @@
     {
       "name_zh": "智利三文鱼出口（AquaChile）",
       "name_en": "AquaChile S.A.",
-      "country": "CL",
+      "country": "ET",
       "region": "智利（对非）",
       "main_products": "三文鱼|三文鱼片|鱼油",
       "main_hs_codes": "0302|0303|1504",
