@@ -82,6 +82,11 @@ const NON_ZERO_GUIDANCE: Record<string, string> = {
 
 // ── 工具函数 ──────────────────────────────────────────────────────────────────
 
+function _pipeToArray(val: string | null | undefined): string[] {
+  if (!val) return []
+  return val.split('|').map((s) => s.trim()).filter(Boolean)
+}
+
 function _normalize_hs(code: string): string {
   return code.replace(/\./g, '').replace(/ /g, '').replace(/-/g, '')
 }
@@ -312,13 +317,19 @@ export const localData = {
     page?: number
     page_size?: number
   }): Promise<SupplierSearchResult> {
-    const payload = await _fetchCached<{ suppliers: Supplier[]; total: number }>(
-      DATA_PATHS.suppliers,
-    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = await _fetchCached<any>(DATA_PATHS.suppliers)
     const page = params?.page ?? 1
     const pageSize = params?.page_size ?? 20
 
-    let filtered = payload.suppliers
+    // Transform: pipe-separated strings → arrays, add id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let filtered: any[] = payload.suppliers.map((s: any, idx: number) => ({
+      ...s,
+      id: s.id ?? idx + 1,
+      main_products: _pipeToArray(s.main_products),
+      main_hs_codes: _pipeToArray(s.main_hs_codes),
+    }))
 
     if (params?.country) {
       filtered = filtered.filter((s) => s.country === params.country!.toUpperCase())
@@ -329,11 +340,13 @@ export const localData = {
         (s) =>
           s.name_zh?.toLowerCase().includes(kw) ||
           (s.name_en ?? '').toLowerCase().includes(kw) ||
-          String(s.main_products ?? '').toLowerCase().includes(kw),
+          s.main_products.some((p: string) => p.toLowerCase().includes(kw)),
       )
     }
     if (params?.hs_code) {
-      filtered = filtered.filter((s) => s.main_hs_codes?.includes(params.hs_code!))
+      filtered = filtered.filter((s: Supplier) =>
+        s.main_hs_codes.some((h: string) => h.includes(params.hs_code!)),
+      )
     }
     if (params?.verified_only) {
       filtered = filtered.filter((s) => s.verified_chamber)
@@ -350,8 +363,17 @@ export const localData = {
    * 获取供应商详情
    */
   async getSupplier(id: number): Promise<Supplier | null> {
-    const payload = await _fetchCached<{ suppliers: Supplier[] }>(DATA_PATHS.suppliers)
-    return payload.suppliers.find((s) => s.id === id) ?? null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = await _fetchCached<any>(DATA_PATHS.suppliers)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = payload.suppliers.find((s: any, idx: number) => (s.id ?? idx + 1) === id)
+    if (!raw) return null
+    return {
+      ...raw,
+      id: raw.id ?? id,
+      main_products: _pipeToArray(raw.main_products),
+      main_hs_codes: _pipeToArray(raw.main_hs_codes),
+    }
   },
 
   /**
@@ -364,7 +386,8 @@ export const localData = {
     supplier_count: number
     verified_count: number
   }[]> {
-    const payload = await _fetchCached<{ suppliers: Supplier[] }>(DATA_PATHS.suppliers)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload = await _fetchCached<any>(DATA_PATHS.suppliers)
     const countries = await this.listCountries()
     const countryMap = new Map(countries.map((c) => [c.code, c]))
 
