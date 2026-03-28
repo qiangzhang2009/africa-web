@@ -15,7 +15,6 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AccountPage from './pages/AccountPage'
 import AdminPage from './pages/AdminPage'
-import DatabasePage from './pages/DatabasePage'
 import FreightPage from './pages/FreightPage'
 import CertificatePage from './pages/CertificatePage'
 import SuppliersPage from './pages/SuppliersPage'
@@ -23,6 +22,7 @@ import { track } from './utils/track'
 import { useTrackInit } from './hooks/useTrackInit'
 import { useAppStore } from './hooks/useAppStore'
 import { getDailyUsage, getMe, getToken } from './utils/api'
+import { decodeToken } from './utils/jwt'
 
 function TrackPageView() {
   const location = useLocation()
@@ -43,7 +43,24 @@ function AuthBootstrap() {
     if (!token) return
 
     let cancelled = false
-    ;(async () => {
+
+    // ── Step 1: INSTANT — decode JWT payload directly (no network call)
+    const payload = decodeToken(token)
+    if (payload && !cancelled) {
+      updateUser({
+        id: parseInt(payload.sub),
+        email: payload.email,
+        tier: payload.tier as 'free' | 'pro' | 'enterprise',
+        is_admin: payload.is_admin,
+        subscribed_at: null,
+        expires_at: null,
+        created_at: null,
+      })
+    }
+
+    // ── Step 2: BACKGROUND (800ms) — verify with server and sync daily usage
+    // 800ms delay gives the UI time to become interactive before we hit the cold-start network
+    const timer = setTimeout(async () => {
       try {
         const [user, usage] = await Promise.all([
           getMe(),
@@ -51,26 +68,18 @@ function AuthBootstrap() {
         ])
         if (cancelled) return
         updateUser(user)
-        // Only sync daily usage for free users; pro/enterprise users have unlimited access.
         if (usage && typeof usage.remaining_today === 'number' && user.tier === 'free') {
           syncRemainingFromServer(usage.remaining_today)
         }
       } catch (e: unknown) {
         if (cancelled) return
         const status = (e as { response?: { status?: number } })?.response?.status
-        // 401 means token is invalid (expired, revoked, or account disabled).
-        // Logout and clear the stale token so the user sees a clean login page.
-        if (status === 401) {
-          logout()
-          return
-        }
-        // Other errors (network, 500, etc.) — keep stale UI; don't force logout.
+        if (status === 401) { logout(); return }
+        // Network error — we already restored state from JWT above; ignore
       }
-    })()
+    }, 800)
 
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [isLoggedIn, updateUser, logout])
 
   return null
@@ -100,7 +109,6 @@ export default function App() {
           <Route path="freight" element={<FreightPage />} />
           <Route path="certificate" element={<CertificatePage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
-          <Route path="database" element={<DatabasePage />} />
         </Route>
       </Routes>
     </BrowserRouter>

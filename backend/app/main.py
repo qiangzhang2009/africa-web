@@ -19,6 +19,7 @@ from app.routers.freight import router as freight_router
 from app.routers.certificate import router as certificate_router
 from app.routers.suppliers import router as suppliers_router
 from app.routers.market_analysis import router as market_analysis_router
+from app.routers.debug_routes import router as debug_router
 
 load_dotenv()
 
@@ -26,9 +27,12 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Bootstrap: ensure DB schema and seed data exist on startup."""
-    from app.models.database import get_db_path, init_db, seed_admin_user
+    from app.models.database import get_db_path, init_db, seed_admin_user, ensure_sub_accounts_table
     db_path = get_db_path()
     init_db(db_path)
+    # Ensure sub_accounts table exists even when init_db() fast-skips.
+    # Idempotent — safe to call on every startup.
+    ensure_sub_accounts_table(db_path)
     seed_admin_user(db_path)
     yield
 
@@ -71,6 +75,7 @@ app.include_router(admin_router, prefix="/api/v1", tags=["管理后台"])
 app.include_router(freight_router, prefix="/api/v1", tags=["物流成本估算"])
 app.include_router(certificate_router, prefix="/api/v1", tags=["原产地证书办理"])
 app.include_router(suppliers_router, prefix="/api/v1", tags=["供应商发现"])
+app.include_router(debug_router, prefix="/api/v1", tags=["Debug"])
 app.include_router(market_analysis_router, prefix="/api/v1", tags=["市场选品分析"])
 
 

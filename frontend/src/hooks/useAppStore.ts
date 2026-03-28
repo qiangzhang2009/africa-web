@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { SubscriptionTier, UserResponse } from '../types'
-import { clearToken, setToken as _setToken } from '../utils/api'
+import { clearTokenCache } from '../utils/jwt'
+import { setToken as _setToken } from '../utils/api'
 
 const FREE_DAILY_LIMIT = 3
 
@@ -129,7 +130,10 @@ export const useAppStore = create<AppState>()(
       },
 
       logout: () => {
-        clearToken()
+        // Clear localStorage token
+        localStorage.removeItem('africa_token')
+        // Clear JWT decode cache
+        clearTokenCache()
         set({ currentUser: null, isLoggedIn: false, tier: 'free' })
       },
 

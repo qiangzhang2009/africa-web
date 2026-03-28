@@ -56,13 +56,16 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         now_str = datetime.now().strftime("%Y-%m-%d")
         if tier != "free" and expires_at and expires_at < now_str:
             tier = "free"
-            conn = get_db(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("UPDATE users SET tier = 'free' WHERE id = %s", (user_id,)) \
-                if _is_postgres() else \
-                cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
-            conn.commit()
-            conn.close()
+            try:
+                conn = get_db(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("UPDATE users SET tier = 'free' WHERE id = %s", (user_id,)) \
+                    if _is_postgres() else \
+                    cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass  # Best-effort: tier was already demoted, continue with 'free'
 
         return {
             "user_id": user_id,
@@ -99,20 +102,24 @@ def get_user_daily_usage(user_id: int, db_path: str) -> int:
 
 def get_user_tier_from_db(user_id: int, db_path: str) -> tuple[str, str | None, bool, bool]:
     """Return (tier, expires_at, is_admin, is_active) from the database."""
-    conn = get_db(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,)) \
-        if _is_postgres() else \
-        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return "free", None, False, False
-    return row["tier"], _row_str(row["expires_at"]), bool(row["is_admin"]), bool(row["is_active"])
+    try:
+        conn = get_db(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,)) \
+            if _is_postgres() else \
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return "free", None, False, False
+        return row["tier"], _row_str(row["expires_at"]), bool(row["is_admin"]), bool(row["is_active"])
+    except Exception:
+        # Neon cold-start or connection error: fail gracefully with a 503
+        raise HTTPException(status_code=503, detail="数据库连接失败，请稍后重试")
 
 
 def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Returns user info if token provided, else None."""
+    """Returns user info if token provided, else None. DB failures return None (not an error)."""
     if not credentials:
         return None
     try:
@@ -125,13 +132,16 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
         now = datetime.now().strftime("%Y-%m-%d")
         if tier != "free" and expires_at and expires_at < now:
             tier = "free"
-            conn = get_db(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("UPDATE users SET tier = 'free' WHERE id = %s", (user_id,)) \
-                if _is_postgres() else \
-                cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
-            conn.commit()
-            conn.close()
+            try:
+                conn = get_db(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("UPDATE users SET tier = 'free' WHERE id = %s", (user_id,)) \
+                    if _is_postgres() else \
+                    cursor.execute("UPDATE users SET tier = 'free' WHERE id = ?", (user_id,))
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass  # best-effort
 
         return {
             "user_id": user_id,
@@ -140,6 +150,9 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
             "is_admin": is_admin,
         }
     except JWTError:
+        return None
+    except HTTPException:
+        # get_user_tier_from_db raised 503: DB unavailable, return None
         return None
 
 

@@ -4327,10 +4327,67 @@ SUPPLIER_REVIEWS_SEED = [
     (714,None,"user855@import.cn",4.5,4.0,3.5,"原产地证书办理顺利，埃塞俄比亚商会效率高。证书直接寄到国内，省去了中间环节。",1,"2025-05-03 10:48:07"),
 ]
 
+def ensure_sub_accounts_table(db_path: str) -> None:
+    """Create sub_accounts table if it doesn't exist.
+
+    Safe to call even when init_db() fast-skips (cert_guides > 1000 rows).
+    Idempotent: uses CREATE TABLE IF NOT EXISTS.
+    """
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    try:
+        if _is_postgres():
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sub_accounts (
+                    id              SERIAL PRIMARY KEY,
+                    parent_user_id  INTEGER NOT NULL,
+                    email           TEXT NOT NULL,
+                    password_hash   TEXT NOT NULL,
+                    name            TEXT,
+                    is_active       INTEGER DEFAULT 1,
+                    created_at      TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS sub_accounts_email_idx
+                    ON sub_accounts(email);
+            """)
+        else:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sub_accounts (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    parent_user_id  INTEGER NOT NULL,
+                    email           TEXT NOT NULL,
+                    password_hash   TEXT NOT NULL,
+                    name            TEXT,
+                    is_active       INTEGER DEFAULT 1,
+                    created_at      TEXT DEFAULT (datetime('now'))
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS sub_accounts_email_idx
+                    ON sub_accounts(email);
+            """)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+    finally:
+        conn.close()
+
+
 def init_db(db_path: str) -> None:
     """Create tables and seed data if empty. Handles existing DB upgrades."""
     conn = get_db(db_path)
     cursor = conn.cursor()
+
+    # ── Fast skip: if PG and largest table is already seeded, skip everything ───
+    # This dramatically speeds up cold starts on Render (no Neon round-trips).
+    if _is_postgres():
+        try:
+            cursor.execute("SELECT COUNT(*) AS cnt FROM cert_guides")
+            count = cursor.fetchone()["cnt"]
+            if count > 1000:
+                print(f"[SKIP] DB already seeded ({count} rows in cert_guides), closing.")
+                conn.close()
+                return
+        except Exception:
+            pass  # Table might not exist yet; continue normally
 
     # ── Create schema ──────────────────────────────────────────────────────────
     if _is_postgres():
