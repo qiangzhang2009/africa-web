@@ -83,7 +83,7 @@ interface CertGuideRecord {
   fee_usd_max: number
   days_min: number
   days_max: number
-  doc_requirements: string | null
+  doc_requirements: string | string[] | null
   step_sequence: string | null
   api_available: number
 }
@@ -134,39 +134,45 @@ export default function DatabasePage() {
   async function loadAllData() {
     setLoading(true)
     try {
+      // ── Step 1: Get accurate table counts from db-status ──────────────────────
+      const dbStatus = await api.get('/debug/db-status')
+      const tables: Record<string, number> = dbStatus.data.tables || {}
+      const accurateStats: TableStats[] = [
+        { table_name: 'africa_countries', record_count: tables.africa_countries ?? 0 },
+        { table_name: 'hs_codes', record_count: tables.hs_codes ?? 0 },
+        { table_name: 'freight_routes', record_count: tables.freight_routes ?? 0 },
+        { table_name: 'cert_guides', record_count: tables.cert_guides ?? 0 },
+        { table_name: 'market_analysis', record_count: tables.market_analysis ?? 0 },
+        { table_name: 'policy_rules', record_count: tables.policy_rules ?? 0 },
+        { table_name: 'suppliers', record_count: tables.suppliers ?? 0 },
+        { table_name: 'supplier_reviews', record_count: tables.supplier_reviews ?? 0 },
+      ]
+      setTableStats(accurateStats)
+
+      // ── Step 2: Load display data in parallel ──────────────────────────────────
       const [suppliersRes, countriesRes, hsRes, freightRes, certRes] = await Promise.allSettled([
         api.get('/suppliers', { params: { page: 1, page_size: 50 } }),
         api.get('/countries'),
-        api.get('/hs-codes/search', { params: { q: 'a', limit: 50 } }),
+        api.get('/hs-codes/search', { params: { q: 'a', limit: 999 } }),
         api.get('/freight/routes'),
         api.get('/certificate/guides'),
       ])
 
       if (suppliersRes.status === 'fulfilled') {
         setSuppliers(suppliersRes.value.data.suppliers || [])
-        setTableStats(prev => [...prev.filter(t => t.table_name !== 'suppliers'), 
-          { table_name: 'suppliers', record_count: suppliersRes.value.data.total || 0 }])
       }
       if (countriesRes.status === 'fulfilled') {
         const data = countriesRes.value.data.countries || countriesRes.value.data.data || []
         setCountries(data)
-        setTableStats(prev => [...prev.filter(t => t.table_name !== 'africa_countries'), 
-          { table_name: 'africa_countries', record_count: data.length }])
       }
       if (hsRes.status === 'fulfilled') {
         setHsCodes(hsRes.value.data.results || [])
-        setTableStats(prev => [...prev.filter(t => t.table_name !== 'hs_codes'), 
-          { table_name: 'hs_codes', record_count: hsRes.value.data.results?.length || 0 }])
       }
       if (freightRes.status === 'fulfilled') {
         setFreightRoutes(freightRes.value.data || [])
-        setTableStats(prev => [...prev.filter(t => t.table_name !== 'freight_routes'), 
-          { table_name: 'freight_routes', record_count: freightRes.value.data?.length || 0 }])
       }
       if (certRes.status === 'fulfilled') {
         setCertGuides(certRes.value.data || [])
-        setTableStats(prev => [...prev.filter(t => t.table_name !== 'cert_guides'), 
-          { table_name: 'cert_guides', record_count: certRes.value.data?.length || 0 }])
       }
     } catch (e) {
       console.error('Failed to load data:', e)
@@ -195,11 +201,11 @@ export default function DatabasePage() {
 
   const tabs: { id: TabType; label: string; count?: number }[] = [
     { id: 'overview', label: '数据概览' },
-    { id: 'suppliers', label: '供应商', count: suppliers.length },
-    { id: 'countries', label: '国家', count: countries.length },
-    { id: 'hs-codes', label: 'HS编码', count: hsCodes.length },
-    { id: 'freight', label: '物流路线', count: freightRoutes.length },
-    { id: 'cert-guides', label: '证书指南', count: certGuides.length },
+    { id: 'suppliers', label: '供应商', count: tableStats.find(t => t.table_name === 'suppliers')?.record_count ?? 0 },
+    { id: 'countries', label: '国家', count: tableStats.find(t => t.table_name === 'africa_countries')?.record_count ?? 0 },
+    { id: 'hs-codes', label: 'HS编码', count: tableStats.find(t => t.table_name === 'hs_codes')?.record_count ?? 0 },
+    { id: 'freight', label: '物流路线', count: tableStats.find(t => t.table_name === 'freight_routes')?.record_count ?? 0 },
+    { id: 'cert-guides', label: '证书指南', count: tableStats.find(t => t.table_name === 'cert_guides')?.record_count ?? 0 },
     { id: 'sync', label: '数据同步' },
   ]
 
@@ -632,7 +638,15 @@ export default function DatabasePage() {
                         {c.days_min}-{c.days_max}天
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500 max-w-xs">
-                        {c.doc_requirements ? JSON.parse(c.doc_requirements).slice(0, 3).join(', ') : '-'}
+                        {(() => {
+                          if (!c.doc_requirements) return '-'
+                          try {
+                            const arr = typeof c.doc_requirements === 'string' ? JSON.parse(c.doc_requirements) : c.doc_requirements
+                            return Array.isArray(arr) ? arr.slice(0, 3).join(', ') : String(c.doc_requirements).slice(0, 50)
+                          } catch {
+                            return String(c.doc_requirements).slice(0, 50)
+                          }
+                        })()}
                       </td>
                     </tr>
                   ))}

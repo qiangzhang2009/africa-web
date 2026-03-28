@@ -102,8 +102,10 @@ def debug_db_status():
             "hs_codes": count_table("hs_codes"),
             "freight_routes": count_table("freight_routes"),
             "cert_guides": count_table("cert_guides"),
-            "suppliers": count_table("suppliers"),
             "market_analysis": count_table("market_analysis"),
+            "policy_rules": count_table("policy_rules"),
+            "supplier_reviews": count_table("supplier_reviews"),
+            "suppliers": count_table("suppliers"),
             "users": count_table("users"),
         }
     }
