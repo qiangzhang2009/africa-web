@@ -273,6 +273,7 @@ export interface CreateApiKeyRequest {
 export interface AdminUserSummary {
   id: number
   email: string
+  wechat_id?: string | null
   tier: SubscriptionTier
   is_admin: boolean
   is_active: boolean
@@ -287,8 +288,11 @@ export interface AdminUserSummary {
     started_at: string | null
     expires_at: string | null
   } | null
+  calculations_count: number
+  last_active: string | null
   sub_accounts_count: number
   api_keys_count: number
+  api_keys_used: number
 }
 
 export interface AdminStats {
@@ -296,12 +300,69 @@ export interface AdminStats {
   paying_users: number
   pro_users: number
   enterprise_users: number
+  disabled_users: number
   api_keys_active: number
   sub_accounts_active: number
   active_subscriptions: number
   total_revenue: number
+  total_calculations: number
+  active_users_30d: number
+  avg_calcs_per_paying_user: number
+  new_users_today: number
   new_users_this_week: number
+  new_users_this_month: number
   expiring_soon_7d: number
+  expired_recently_7d: number
+}
+
+export interface AdminUserDetail {
+  user: Record<string, unknown>
+  usage: {
+    total_calculations: number
+    calculations_30d: number
+    last_calculation: string | null
+    daily_usage_30d: Array<{ day: string; cnt: number }>
+  }
+  subscriptions: Array<Record<string, unknown>>
+  sub_accounts: Array<Record<string, unknown>>
+  api_keys: Array<Record<string, unknown>>
+}
+
+export interface TierChangeRequest {
+  tier: SubscriptionTier
+  expires_at?: string
+  reason?: string
+  duration_days?: number
+}
+
+export interface RevenueStats {
+  tier_revenue: { free: number; pro: number; enterprise: number }
+  total_revenue: number
+  paying_counts: { pro: number; enterprise: number }
+  daily_series: Array<{
+    day: string
+    pro: number
+    enterprise: number
+    free: number
+    total: number
+    count: number
+  }>
+  period_days: number
+}
+
+export interface UsageStats {
+  period_days: number
+  daily_calculations: Array<{ day: string; calc_count: number; active_users: number }>
+  top_destinations: Array<{ destination: string; cnt: number }>
+  top_origin_countries: Array<{ origin_country: string; cnt: number }>
+  top_hs_codes: Array<{ hs_code: string; cnt: number }>
+  user_activity: Array<{ day: string; calc_users: number; registered_users: number }>
+}
+
+export interface SubscriptionAnalytics {
+  subscription_breakdown: Record<string, Record<string, number>>
+  avg_subscription_days: number
+  churned_users: number
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────

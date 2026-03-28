@@ -196,6 +196,8 @@ export async function adminListUsers(params: {
   page_size?: number
   tier?: string
   search?: string
+  sort?: string
+  order?: string
 }): Promise<{ total: number; page: number; page_size: number; users: AdminUserSummary[] }> {
   const { data } = await api.get('/admin/users', { params })
   return data
@@ -219,6 +221,31 @@ export async function adminCreateSubscription(userId: number, tier: string) {
     payment_method: 'manual',
     payment_channel: 'manual',
   })
+  return data
+}
+
+export async function adminGetUserDetail(userId: number) {
+  const { data } = await api.get<import('../types').AdminUserDetail>(`/admin/users/${userId}`)
+  return data
+}
+
+export async function adminChangeTier(userId: number, body: import('../types').TierChangeRequest) {
+  const { data } = await api.post(`/admin/users/${userId}/tier`, body)
+  return data
+}
+
+export async function adminGetRevenueStats(days = 90) {
+  const { data } = await api.get<import('../types').RevenueStats>('/admin/stats/revenue', { params: { days } })
+  return data
+}
+
+export async function adminGetUsageStats(days = 30) {
+  const { data } = await api.get<import('../types').UsageStats>('/admin/stats/usage', { params: { days } })
+  return data
+}
+
+export async function adminGetSubscriptionAnalytics() {
+  const { data } = await api.get<import('../types').SubscriptionAnalytics>('/admin/stats/subscriptions')
   return data
 }
 
