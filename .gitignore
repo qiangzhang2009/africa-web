@@ -39,3 +39,4 @@ Thumbs.db
 # Wrangler cache
 .wrangler/
 .vercel
+.specstory/
