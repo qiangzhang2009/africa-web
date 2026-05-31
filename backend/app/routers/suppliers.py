@@ -3,10 +3,11 @@ Supplier discovery and management API.
 """
 import json
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from typing import Optional
-from app.models.database import get_db, get_db_path, _adapt_insert, _is_postgres
+
+from app.models.database import _adapt_insert, _is_postgres, get_db, get_db_path
 from app.routers.auth import get_current_user, get_optional_user
 
 router = APIRouter()
@@ -18,25 +19,25 @@ DB_PATH = get_db_path()
 class Supplier(BaseModel):
     id: int
     name_zh: str
-    name_en: Optional[str]
+    name_en: str | None
     country: str
-    region: Optional[str]
+    region: str | None
     main_products: list[str]
     main_hs_codes: list[str]
-    contact_email: Optional[str]
-    contact_phone: Optional[str]
-    website: Optional[str]
-    min_order_kg: Optional[float]
-    payment_terms: Optional[str]
+    contact_email: str | None
+    contact_phone: str | None
+    website: str | None
+    min_order_kg: float | None
+    payment_terms: str | None
     export_years: int
-    annual_export_tons: Optional[float]
+    annual_export_tons: float | None
     verified_chamber: bool
     verified_实地拜访: bool
     verified_sgs: bool
     rating_avg: float
     review_count: int
     status: str
-    intro: Optional[str]
+    intro: str | None
     certifications: list[str]
 
 
@@ -44,7 +45,7 @@ class SupplierListItem(BaseModel):
     id: int
     name_zh: str
     country: str
-    region: Optional[str]
+    region: str | None
     main_products: list[str]
     main_hs_codes: list[str]
     export_years: int
@@ -52,13 +53,13 @@ class SupplierListItem(BaseModel):
     rating_avg: float
     review_count: int
     status: str
-    min_order_kg: Optional[float]
+    min_order_kg: float | None
 
 
 class SupplierSearchInput(BaseModel):
-    country: Optional[str] = Field(None, description="原产国 ISO code")
-    keyword: Optional[str] = Field(None, description="搜索关键词（产品/公司名）")
-    hs_code: Optional[str] = Field(None, description="HS编码（支持前缀匹配）")
+    country: str | None = Field(None, description="原产国 ISO code")
+    keyword: str | None = Field(None, description="搜索关键词（产品/公司名）")
+    hs_code: str | None = Field(None, description="HS编码（支持前缀匹配）")
     verified_only: bool = Field(False, description="仅显示已认证供应商")
     page: int = Field(1, ge=1)
     page_size: int = Field(20, ge=1, le=50)
@@ -74,13 +75,13 @@ class SupplierSearchResult(BaseModel):
 class SupplierReview(BaseModel):
     id: int
     supplier_id: int
-    user_email: Optional[str]
+    user_email: str | None
     quality_score: float
     delivery_score: float
     communication_score: float
-    comment: Optional[str]
+    comment: str | None
     is_verified_deal: bool
-    created_at: Optional[str]
+    created_at: str | None
 
 
 class SupplierReviewCreate(BaseModel):
@@ -189,9 +190,9 @@ def _supplier_to_admin_item(r) -> dict:
 
 @router.get("/suppliers")
 async def search_suppliers(
-    country: Optional[str] = Query(None, description="原产国 ISO code"),
-    keyword: Optional[str] = Query(None, description="搜索关键词"),
-    hs_code: Optional[str] = Query(None, description="HS编码前缀"),
+    country: str | None = Query(None, description="原产国 ISO code"),
+    keyword: str | None = Query(None, description="搜索关键词"),
+    hs_code: str | None = Query(None, description="HS编码前缀"),
     verified_only: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
@@ -312,9 +313,8 @@ async def list_supplier_categories():
 
 # ─── Contact view helpers ──────────────────────────────────────────────────────
 from app.routers.subscription import (
-    _get_user_contact_view_quota,
-    _record_contact_view,
     CONTACT_VIEW_DAILY_QUOTA,
+    _record_contact_view,
 )
 
 
@@ -348,7 +348,7 @@ def _mask_contact_info(contact: str | None, mask_type: str = "email") -> str:
 
 
 @router.get("/suppliers/{supplier_id}")
-async def get_supplier(supplier_id: int, current_user: Optional[dict] = Depends(get_optional_user)):
+async def get_supplier(supplier_id: int, current_user: dict | None = Depends(get_optional_user)):
     """
     Get detailed supplier information.
     - For authenticated users: returns full info (contact fields included, subject to quota)

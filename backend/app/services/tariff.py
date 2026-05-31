@@ -1,26 +1,22 @@
 """Tariff and cost calculation service."""
-import re
-import json
-from pathlib import Path
-from typing import Optional
 
 import httpx
 
+from app.core.config import settings
 from app.models.database import get_db
-from app.schemas import TariffBreakdown, ImportCostBreakdown
-from app.services.tariff.rules_engine import rules_engine, TariffRuleResult
+from app.schemas import ImportCostBreakdown, TariffBreakdown
 from app.services.tariff.constants import (
     AFRICA_SHIPPING_RATES,
+    CN_ZERO_TARIFF_COUNTRIES,
     CUSTOMS_CLEARANCE_BASE,
     CUSTOMS_CLEARANCE_PER_KG,
-    ROASTING_LOSS_RATE,
     DOMESTIC_LOGISTICS,
     PACKAGING_PER_BAG,
     RETAIL_PRICE_MULTIPLIER,
     RETAIL_REFERENCE,
-    CN_ZERO_TARIFF_COUNTRIES,
+    ROASTING_LOSS_RATE,
 )
-from app.core.config import settings
+from app.services.tariff.rules_engine import TariffRuleResult, rules_engine
 
 # EXCHANGE_RATE_API_KEY is loaded from settings in app.core.config
 
@@ -59,7 +55,7 @@ def _format_hs(code: str) -> str:
     return ".".join(c[i*2:i*2+2] for i in range((len(c)+1)//2))
 
 
-def get_hs_record(hs_code: str, db_path: str) -> Optional[dict]:
+def get_hs_record(hs_code: str, db_path: str) -> dict | None:
     """Query HS code from DB. Tries exact match first, then prefix match."""
     conn = get_db(db_path)
     cursor = conn.cursor()
@@ -83,7 +79,7 @@ def get_hs_record(hs_code: str, db_path: str) -> Optional[dict]:
     return None
 
 
-def get_hs_record_from_name(name: str, db_path: str) -> Optional[dict]:
+def get_hs_record_from_name(name: str, db_path: str) -> dict | None:
     conn = get_db(db_path)
     cursor = conn.cursor()
     cursor.execute(

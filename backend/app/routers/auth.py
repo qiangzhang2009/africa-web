@@ -3,20 +3,23 @@ Authentication router: register, login, JWT token management.
 """
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.security import (
     create_access_token,
     decode_access_token,
-    verify_password,
     hash_password,
+    verify_password,
 )
-from app.core.config import settings
-from app.models.database import get_db, get_db_path, _is_postgres, _adapt_insert, sql_now
+from app.models.database import _is_postgres, get_db, get_db_path, sql_now
 from app.schemas import (
-    UserRegister, UserLogin, UserResponse,
-    AuthResponse, SubAccountCreate, SubAccountResponse,
+    AuthResponse,
+    SubAccountCreate,
+    SubAccountResponse,
+    UserLogin,
+    UserRegister,
+    UserResponse,
 )
 
 ALGORITHM = "HS256"
@@ -67,7 +70,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             "tier": tier,
             "is_admin": is_admin,
         }
-    except (Exception,):
+    except Exception:
         raise HTTPException(status_code=401, detail="Token无效或已过期")
 
 
@@ -145,7 +148,7 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
             "tier": tier,
             "is_admin": is_admin,
         }
-    except (Exception,):
+    except Exception:
         return None
     except HTTPException:
         # get_user_tier_from_db raised 503: DB unavailable, return None

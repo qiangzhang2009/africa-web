@@ -1,5 +1,5 @@
 """Security utilities: JWT, password hashing, rate limiting markers."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from jose import jwt
 from passlib.context import CryptContext
@@ -27,7 +27,7 @@ def create_access_token(user_id: int, email: str, tier: str, is_admin: bool) -> 
         "email": email,
         "tier": tier,
         "is_admin": is_admin,
-        "exp": datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
+        "exp": datetime.now(UTC) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=ALGORITHM)
 

@@ -1,11 +1,11 @@
 """Structured logging setup with request ID tracing."""
 import logging
 import sys
-import uuid
 import time
+import uuid
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-
 
 # ─── Logger factory ───────────────────────────────────────────────────────────
 

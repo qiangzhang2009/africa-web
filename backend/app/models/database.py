@@ -4,15 +4,12 @@ Automatically detects DATABASE_URL to choose the right driver.
 Schema: africa_countries, hs_codes, policy_rules, users, calculations,
         subscriptions, api_keys, sub_accounts, usage_logs
 """
-import os
-import sqlite3
-import json
 import hashlib
+import os
 import secrets
-from pathlib import Path
+import sqlite3
 from datetime import datetime
-from typing import Any, Optional
-
+from pathlib import Path
 
 # ─── Password hashing ─────────────────────────────────────────────────────────
 
@@ -4447,7 +4444,7 @@ def init_db(db_path: str) -> None:
     def upsert_many(table: str, cols: str, values: list, insert_sql: str, update_sql: str = ""):
         """Insert many rows; for PostgreSQL uses ON CONFLICT DO NOTHING."""
         if _is_postgres():
-            on_conflict = f"ON CONFLICT DO NOTHING"
+            on_conflict = "ON CONFLICT DO NOTHING"
             final_sql = _to_pg_sql(insert_sql.replace("VALUES", f"{on_conflict} VALUES", 1))
         else:
             final_sql = insert_sql.replace("INSERT INTO", "INSERT OR IGNORE INTO", 1)
@@ -4476,7 +4473,7 @@ def init_db(db_path: str) -> None:
         Smart upsert for seeding: insert only rows whose unique key doesn't exist.
         Preserves any manual edits to existing records.
         Strategy: INSERT OR IGNORE for SQLite; ON CONFLICT DO NOTHING for PG.
-        
+
         For PostgreSQL with substantial existing data, skip seeding to preserve
         data synced via upload_enriched_data.py or sync_to_cloud.py.
         """
@@ -4491,7 +4488,7 @@ def init_db(db_path: str) -> None:
                     return
             except Exception:
                 pass
-        
+
         try:
             if _is_postgres():
                 pg_sql = _to_pg_sql(insert_sql)

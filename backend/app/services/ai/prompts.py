@@ -21,7 +21,7 @@ def origin_check_user_prompt(
 ) -> str:
     steps_text = "\n".join(f"{i+1}. {s}" for i, s in enumerate(processing_steps)) if processing_steps else "无加工工序"
     materials_text = "\n".join(material_sources) if material_sources else "全部为本地原料"
-    
+
     return f"""请评估以下产品的原产地资格：
 
 产品信息：

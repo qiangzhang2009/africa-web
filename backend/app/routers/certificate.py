@@ -5,11 +5,12 @@ Step-by-step workflow for obtaining CO certificates.
 import json
 import os
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
-from app.models.database import get_db, get_db_path, _adapt_insert, _is_postgres
-from app.routers.auth import get_current_user, get_optional_user
+
+from app.models.database import _adapt_insert, _is_postgres, get_db, get_db_path
+from app.routers.auth import get_current_user
 
 router = APIRouter()
 DB_PATH = get_db_path()
@@ -85,16 +86,16 @@ class CertGuide(BaseModel):
     cert_type_zh: str
     issuing_authority: str
     issuing_authority_zh: str
-    website_url: Optional[str]
+    website_url: str | None
     fee_usd_min: float
     fee_usd_max: float
-    fee_cny_note: Optional[str]
+    fee_cny_note: str | None
     days_min: int
     days_max: int
     doc_requirements: list[str]
     step_sequence: list[str]
     api_available: bool
-    notes: Optional[str]
+    notes: str | None
 
 
 class CertGuideListItem(BaseModel):
@@ -126,9 +127,9 @@ class CertApplication(BaseModel):
     current_step: int
     steps_completed: dict
     ai_doc_generated: bool
-    submitted_at: Optional[str]
-    cert_number: Optional[str]
-    created_at: Optional[str]
+    submitted_at: str | None
+    cert_number: str | None
+    created_at: str | None
 
 
 class CertDocGenerateInput(BaseModel):
@@ -167,7 +168,7 @@ def _parse_json_field(raw: str, default=None):
 
 @router.get("/certificate/guides")
 async def list_cert_guides(
-    country: Optional[str] = None,
+    country: str | None = None,
 ):
     """
     List certificate of origin guides for all or specific countries.

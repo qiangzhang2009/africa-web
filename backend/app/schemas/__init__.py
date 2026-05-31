@@ -1,17 +1,17 @@
 """
 Shared Pydantic schemas for all API endpoints.
 """
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 
+from pydantic import BaseModel, Field
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
 class UserRegister(BaseModel):
     email: str = Field(..., min_length=5, max_length=100)
     password: str = Field(..., min_length=6, max_length=100)
-    wechat_id: Optional[str] = Field(default=None, max_length=50)
+    wechat_id: str | None = Field(default=None, max_length=50)
 
 
 class UserLogin(BaseModel):
@@ -24,9 +24,9 @@ class UserResponse(BaseModel):
     email: str
     tier: str = "free"
     is_admin: bool = False
-    subscribed_at: Optional[str] = None
-    expires_at: Optional[str] = None
-    created_at: Optional[str] = None
+    subscribed_at: str | None = None
+    expires_at: str | None = None
+    created_at: str | None = None
 
 
 class AuthResponse(BaseModel):
@@ -42,15 +42,15 @@ class AuthResponse(BaseModel):
 class SubAccountCreate(BaseModel):
     email: str = Field(..., min_length=5, max_length=100)
     password: str = Field(..., min_length=6, max_length=100)
-    name: Optional[str] = Field(default=None, max_length=50)
+    name: str | None = Field(default=None, max_length=50)
 
 
 class SubAccountResponse(BaseModel):
     id: int
     email: str
-    name: Optional[str] = None
+    name: str | None = None
     is_active: bool = True
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 # ─── Tariff ───────────────────────────────────────────────────────────────────
@@ -84,9 +84,9 @@ class TariffBreakdown(BaseModel):
 class TariffCalcResult(BaseModel):
     success: bool
     input: TariffCalcInput
-    breakdown: Optional[TariffBreakdown]
+    breakdown: TariffBreakdown | None
     origin_qualified: bool
-    origin_rule: Optional[str]
+    origin_rule: str | None
     message: str
 
 
@@ -121,18 +121,18 @@ class ImportCostBreakdown(BaseModel):
 class ImportCostResult(BaseModel):
     success: bool
     input: ImportCostInput
-    breakdown: Optional[ImportCostBreakdown]
-    origin_certificate_guide: Optional[list[str]]
+    breakdown: ImportCostBreakdown | None
+    origin_certificate_guide: list[str] | None
     message: str
 
 
 # ─── HS Search ────────────────────────────────────────────────────────────────
 
 class HSSearchResult(BaseModel):
-    hs_10: Optional[str]
+    hs_10: str | None
     name_zh: str
     mfn_rate: float
-    category: Optional[str]
+    category: str | None
     match_score: float = 1.0
 
 
@@ -148,7 +148,7 @@ class OriginCheckInput(BaseModel):
 
 class OriginCheckResult(BaseModel):
     qualifies: bool
-    rule_applied: Optional[str]
+    rule_applied: str | None
     confidence: float = Field(..., ge=0, le=1)
     reasons: list[str]
     suggestions: list[str]
@@ -168,8 +168,8 @@ class Country(BaseModel):
 # ─── Subscription ─────────────────────────────────────────────────────────────
 
 class SubscriptionCheck(BaseModel):
-    email: Optional[str] = None
-    wechat_id: Optional[str] = None
+    email: str | None = None
+    wechat_id: str | None = None
 
 
 class ContactViewQuota(BaseModel):
@@ -181,14 +181,14 @@ class ContactViewQuota(BaseModel):
 
 class SubscriptionStatus(BaseModel):
     tier: str
-    expires_at: Optional[str]
-    remaining_queries: Optional[int]
+    expires_at: str | None
+    remaining_queries: int | None
     is_active: bool = True
-    days_remaining: Optional[int] = None
+    days_remaining: int | None = None
     api_enabled: bool = False
     sub_accounts_remaining: int = 0
     contact_view_quota: ContactViewQuota
-    user: Optional[UserResponse] = None
+    user: UserResponse | None = None
 
 
 class SubscriptionCreate(BaseModel):
@@ -202,11 +202,11 @@ class SubscriptionResponse(BaseModel):
     tier: str
     amount: float
     currency: str = "CNY"
-    payment_method: Optional[str] = None
+    payment_method: str | None = None
     payment_channel: str = "mock"
     status: str = "active"
-    started_at: Optional[str] = None
-    expires_at: Optional[str] = None
+    started_at: str | None = None
+    expires_at: str | None = None
     auto_renew: bool = False
 
 
@@ -220,24 +220,24 @@ class ApiKeyCreate(BaseModel):
 class ApiKeyResponse(BaseModel):
     id: int
     key_prefix: str
-    name: Optional[str] = None
+    name: str | None = None
     tier: str = "enterprise"
     rate_limit_day: int = 100
     is_active: bool = True
-    last_used_at: Optional[str] = None
-    created_at: Optional[str] = None
+    last_used_at: str | None = None
+    created_at: str | None = None
 
 
 class ApiKeyWithPlain(BaseModel):
     id: int
     plain_key: str
     key_prefix: str
-    name: Optional[str] = None
+    name: str | None = None
     tier: str = "enterprise"
     rate_limit_day: int = 100
     is_active: bool = True
-    last_used_at: Optional[str] = None
-    created_at: Optional[str] = None
+    last_used_at: str | None = None
+    created_at: str | None = None
 
 
 # ─── Freight ─────────────────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ class FreightRoute(BaseModel):
     cost_max_usd: float
     transit_days_min: int
     transit_days_max: int
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class FreightEstimateInput(BaseModel):
@@ -283,7 +283,7 @@ class FreightEstimateResult(BaseModel):
     total_freight_cny: float
     total_freight_usd: float
     transit_days: str
-    notes: Optional[str] = None
+    notes: str | None = None
     breakdown: dict
 
 
@@ -329,7 +329,7 @@ class SupplierListItem(BaseModel):
     id: int
     name_zh: str
     country: str
-    region: Optional[str]
+    region: str | None
     main_products: list[str]
     main_hs_codes: list[str]
     export_years: int
@@ -337,33 +337,33 @@ class SupplierListItem(BaseModel):
     rating_avg: float
     review_count: int
     status: str
-    min_order_kg: Optional[float]
+    min_order_kg: float | None
 
 
 class AdminSupplierItem(BaseModel):
     """Full supplier record for admin view — includes contact info."""
     id: int
     name_zh: str
-    name_en: Optional[str]
+    name_en: str | None
     country: str
-    region: Optional[str]
+    region: str | None
     main_products: str
     main_hs_codes: str
-    contact_email: Optional[str]
-    contact_phone: Optional[str]
-    website: Optional[str]
-    min_order_kg: Optional[float]
-    payment_terms: Optional[str]
+    contact_email: str | None
+    contact_phone: str | None
+    website: str | None
+    min_order_kg: float | None
+    payment_terms: str | None
     export_years: int
-    annual_export_tons: Optional[float]
+    annual_export_tons: float | None
     verified_chamber: int
     verified_实地拜访: int
     verified_sgs: int
     rating_avg: float
     review_count: int
     status: str
-    intro: Optional[str]
-    certifications: Optional[str]
+    intro: str | None
+    certifications: str | None
 
 
 class SupplierSearchResult(BaseModel):

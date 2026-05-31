@@ -2,13 +2,17 @@
 Subscription management router.
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
+
 from app.models.database import get_db, get_db_path
+from app.routers.auth import get_current_user
 from app.schemas import (
-    SubscriptionCreate, SubscriptionResponse, SubscriptionStatus,
+    SubscriptionCreate,
+    SubscriptionResponse,
+    SubscriptionStatus,
     UserResponse,
 )
-from app.routers.auth import get_current_user
 
 DB_PATH = get_db_path()
 

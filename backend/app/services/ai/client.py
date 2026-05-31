@@ -109,9 +109,9 @@ class DeepSeekClient:
             "processing_steps": processing_steps,
             "material_sources": material_sources,
         }
-        
+
         cache_key = _get_cache_key(input_data)
-        
+
         if _is_cache_valid(cache_key):
             logger.info(f"AI origin check cache HIT for {hs_code}/{origin}")
             return _cached_results[cache_key]
@@ -139,7 +139,7 @@ class DeepSeekClient:
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1024,
             )
-            
+
             # Parse JSON response
             if raw.startswith("```"):
                 for block in raw.split("```"):
@@ -147,17 +147,17 @@ class DeepSeekClient:
                     if block and not block.startswith("json"):
                         raw = block
                         break
-            
+
             result = json.loads(raw.strip())
-            
+
             # Cache the result
             _prune_cache()
             _cached_results[cache_key] = result
             _cache_timestamps[cache_key] = time.time()
             logger.info(f"AI origin check cached for {hs_code}/{origin}")
-            
+
             return result
-            
+
         except json.JSONDecodeError as e:
             logger.error(f"AI returned non-JSON: {raw[:200]} — {e}")
             return {
@@ -199,14 +199,14 @@ class DeepSeekClient:
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=2048,
             )
-            
+
             if raw.startswith("```"):
                 for block in raw.split("```"):
                     block = block.strip()
                     if block and not block.startswith("json"):
                         raw = block
                         break
-            
+
             result = json.loads(raw.strip())
             return result
         except Exception as e:

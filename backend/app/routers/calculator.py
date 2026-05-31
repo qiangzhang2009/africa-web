@@ -1,16 +1,19 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.schemas import (
-    TariffCalcInput,
-    ImportCostInput,
-    OriginCheckInput, OriginCheckResult,
-)
 import json
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.core.logging import get_logger
+from app.models.database import _is_postgres, get_db, get_db_path
+from app.routers.auth import get_optional_user, get_user_daily_usage
+from app.schemas import (
+    ImportCostInput,
+    OriginCheckInput,
+    OriginCheckResult,
+    TariffCalcInput,
+)
 from app.services import tariff as tariff_service
 from app.services.ai.client import DeepSeekClient
-from app.models.database import get_db, get_db_path, _is_postgres
-from app.routers.auth import get_optional_user, get_user_daily_usage
-from app.core.logging import get_logger
 
 logger = get_logger("calculator")
 
@@ -32,7 +35,7 @@ def get_ai_client() -> DeepSeekClient:
 
 def _ensure_calc_table(db_path: str) -> None:
     """Self-healing: create calculations table if it doesn't exist yet (SQLite only).
-    
+
     For PostgreSQL, the table is created by init_db(). This function is a no-op.
     """
     if _is_postgres():

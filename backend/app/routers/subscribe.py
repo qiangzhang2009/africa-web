@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Query
-from app.models.database import get_db, get_db_path
 from datetime import datetime
+
+from fastapi import APIRouter, Query
+
+from app.models.database import get_db, get_db_path
 
 DB_PATH = get_db_path()
 

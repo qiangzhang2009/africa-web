@@ -1,10 +1,10 @@
 """
 Freight routes and cost estimation API.
 """
-import json
-from fastapi import APIRouter, Query, HTTPException
+
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from typing import Optional
+
 from app.models.database import get_db, get_db_path
 
 router = APIRouter()
@@ -26,7 +26,7 @@ class FreightRoute(BaseModel):
     cost_max_usd: float
     transit_days_min: int
     transit_days_max: int
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class FreightEstimateInput(BaseModel):
@@ -54,7 +54,7 @@ class FreightEstimateResult(BaseModel):
     total_freight_cny: float
     total_freight_usd: float
     transit_days: str
-    notes: Optional[str] = None
+    notes: str | None = None
     breakdown: dict
 
 
@@ -62,9 +62,9 @@ class FreightEstimateResult(BaseModel):
 
 @router.get("/freight/routes")
 async def list_freight_routes(
-    origin_country: Optional[str] = Query(None, description="原产国 ISO code"),
-    dest_port: Optional[str] = Query(None, description="目的港代码"),
-    transport_type: Optional[str] = Query(None, description="运输类型"),
+    origin_country: str | None = Query(None, description="原产国 ISO code"),
+    dest_port: str | None = Query(None, description="目的港代码"),
+    transport_type: str | None = Query(None, description="运输类型"),
 ):
     """
     List all available freight routes with optional filtering.

@@ -4,7 +4,6 @@ Debug routers — mounted at /api/v1 prefix (also accessible at root for local d
 Vercel rewrites /api/v1/debug/* → OnRender, so these must be at /api/v1 prefix.
 Legacy root-level /debug/* routes are kept for local dev compatibility.
 """
-import os
 import httpx
 from fastapi import APIRouter
 
