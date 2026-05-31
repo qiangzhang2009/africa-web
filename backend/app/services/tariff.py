@@ -1,5 +1,4 @@
 """Tariff and cost calculation service."""
-import os
 import re
 import json
 from pathlib import Path
@@ -9,67 +8,30 @@ import httpx
 
 from app.models.database import get_db
 from app.schemas import TariffBreakdown, ImportCostBreakdown
+from app.services.tariff.rules_engine import rules_engine, TariffRuleResult
+from app.services.tariff.constants import (
+    AFRICA_SHIPPING_RATES,
+    CUSTOMS_CLEARANCE_BASE,
+    CUSTOMS_CLEARANCE_PER_KG,
+    ROASTING_LOSS_RATE,
+    DOMESTIC_LOGISTICS,
+    PACKAGING_PER_BAG,
+    RETAIL_PRICE_MULTIPLIER,
+    RETAIL_REFERENCE,
+    CN_ZERO_TARIFF_COUNTRIES,
+)
+from app.core.config import settings
 
-# ─── Constants ──────────────────────────────────────────────────────────────────
-
-DEFAULT_USD_CNY = 7.25  # fallback exchange rate
-EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY", "272fd8682bc120db4597b813")
-
-# Shipping rate: USD/kg (海运散货, Africa -> China)
-AFRICA_SHIPPING_RATES: dict[str, float] = {
-    "ET": 5.0,  # Ethiopia via Djibouti
-    "KE": 4.5,  # Kenya via Mombasa
-    "TZ": 4.0,  # Tanzania
-    "GH": 4.5,  # Ghana
-    "CI": 5.5,  # Côte d'Ivoire
-    "CM": 5.0,  # Cameroon
-    "ZA": 3.5,  # South Africa
-    "NG": 5.0,  # Nigeria
-    "RW": 5.5,  # Rwanda
-    "UG": 5.0,  # Uganda
-    "MZ": 4.5,  # Mozambique
-    "DEFAULT": 5.5,
-}
-
-CUSTOMS_CLEARANCE_BASE = 2000.0   # RMB per shipment (LCL)
-CUSTOMS_CLEARANCE_PER_KG = 2.0   # RMB/kg
-
-ROASTING_LOSS_RATE = 0.15         # 生豆→熟豆损耗率
-DOMESTIC_LOGISTICS = 30.0        # RMB per domestic order
-PACKAGING_PER_BAG = 0.5          # RMB per 227g bag
-RETAIL_PRICE_MULTIPLIER = 2.5     # cost × 2.5 = suggested retail
-
-RETAIL_REFERENCE: dict[str, float] = {
-    "0901": 89.0,   # Specialty coffee 227g
-    "1801": 45.0,   # Cocoa beans
-    "0801": 38.0,   # Cashews
-    "0802": 35.0,   # Other nuts
-    "1207": 28.0,   # Sesame
-    "default": 50.0,
-}
-
-CN_ZERO_TARIFF_COUNTRIES = {
-    "ET", "ZA", "KE", "GH", "CI", "CM", "TZ", "RW", "UG", "MZ", "NG", "EG", "MA", "DZ", "TN",
-    "SD", "AO", "BJ", "BW", "BF", "BI", "CV", "CF", "TD", "CD", "CG", "DJ", "GQ", "ER",
-    "GA", "GM", "GN", "GW", "LS", "LR", "LY", "MG", "MW", "ML", "MR", "MU", "NA", "NE", "SN",
-    "SC", "SL", "SO", "SS", "TG", "ZM", "ZW", "KM", "ST",
-}  # 53个与中国建交的非洲国家（不含斯威士兰，其与台湾建交）
-
-EU_EPA_COUNTRIES = {"GH", "CI", "CM", "KE", "MZ"}  # interim/stepping-stone EPAs (2024)
-
+# EXCHANGE_RATE_API_KEY is loaded from settings in app.core.config
 
 # ─── Helper functions ──────────────────────────────────────────────────────────
 
-def get_shipping_rate(origin_country: str) -> float:
-    code = origin_country.upper()
-    return AFRICA_SHIPPING_RATES.get(code, AFRICA_SHIPPING_RATES["DEFAULT"])
 
-
-def get_usd_cny_rate() -> float:
+def _get_usd_cny_rate() -> float:
     """Get USD→CNY rate from ExchangeRate-API. Falls back to DEFAULT_USD_CNY on failure."""
     try:
         url = (
-            f"https://v6.exchangerate-api.com/v6/{EXCHANGE_RATE_API_KEY}"
+            f"https://v6.exchangerate-api.com/v6/{settings.EXCHANGE_RATE_API_KEY}"
             "/pair/USD/CNY"
         )
         with httpx.Client(timeout=5.0) as client:
@@ -81,7 +43,7 @@ def get_usd_cny_rate() -> float:
                 return float(rate)
     except Exception:
         pass
-    return DEFAULT_USD_CNY
+    return settings.EXCHANGE_RATE_FALLBACK
 
 
 def _normalize_hs(code: str) -> str:
@@ -148,14 +110,6 @@ def get_category_from_name(name: str) -> str:
     return "default"
 
 
-def is_africa_zero_tariff_country(code: str) -> bool:
-    return code.upper() in CN_ZERO_TARIFF_COUNTRIES
-
-
-def is_eu_epa_country(code: str) -> bool:
-    return code.upper() in EU_EPA_COUNTRIES
-
-
 # ─── Tariff calculation ──────────────────────────────────────────────────────
 
 def calculate_tariff(
@@ -183,7 +137,7 @@ def calculate_tariff(
     vat_rate = hs_record["vat_rate"]
     origin_upper = origin_country.upper()
 
-    shipping_rate_usd = get_shipping_rate(origin_upper)
+    shipping_rate_usd = AFRICA_SHIPPING_RATES.get(origin_upper, AFRICA_SHIPPING_RATES["DEFAULT"])
     effective_qty = max(quantity_kg, 1)
     if freight_override is not None:
         freight_usd = freight_override
@@ -191,44 +145,23 @@ def calculate_tariff(
         freight_usd = shipping_rate_usd * effective_qty
     # Insurance: ICC(C) minimum coverage, 0.5% of FOB per international shipping custom
     insurance_usd = fob_value * 0.005
-    usd_cny = exchange_rate if exchange_rate else get_usd_cny_rate()
+    usd_cny = exchange_rate if exchange_rate else (
+        _get_usd_cny_rate()
+    )
 
-    # Determine tariff rate
-    if destination == "CN":
-        if is_africa_zero_tariff_country(origin_upper):
-            tariff_rate = 0.0
-            origin_qualified = True
-            origin_rule = "中国对非洲53个建交国零关税政策（2026年5月1日起）"
-            message = "符合零关税条件"
-        else:
-            tariff_rate = mfn_rate
-            origin_qualified = False
-            origin_rule = None
-            message = f"{origin_upper} 不在中国零关税白名单内（仅建交国适用）"
+    # Determine tariff rate via rules engine
+    rule_result: TariffRuleResult = rules_engine.evaluate(
+        hs_code=hs_code,
+        origin_country=origin_upper,
+        destination=destination,
+        mfn_rate=mfn_rate,
+    )
 
-    elif destination == "EU":
-        if is_eu_epa_country(origin_upper):
-            tariff_rate = 0.0
-            origin_qualified = True
-            origin_rule = "EU-EPA零关税（增值≥40%估算）"
-            message = "可能符合EPA零关税条件（需验证增值比例≥40%）"
-        else:
-            tariff_rate = mfn_rate
-            origin_qualified = False
-            origin_rule = None
-            message = f"{origin_upper} 未与欧盟签署EPA协议"
-
-    elif destination == "AFCFTA":
-        tariff_rate = 0.0
-        origin_qualified = True
-        origin_rule = "AfCFTA区内优惠税率（增值≥40%）"
-        message = "可能符合AfCFTA优惠条件"
-
-    else:
-        tariff_rate = mfn_rate
-        origin_qualified = False
-        origin_rule = None
-        message = f"未知目的地市场: {destination}"
+    tariff_rate = rule_result.tariff_rate
+    origin_qualified = rule_result.origin_qualified
+    origin_rule = rule_result.rule_name
+    message = rule_result.message
+    # savings_vs_mfn is computed from MFN rate in CNY below
 
     # Calculate in CNY
     fob_cny = fob_value * usd_cny
@@ -238,7 +171,8 @@ def calculate_tariff(
     taxable_value = fob_cny + freight_cny + insurance_cny + tariff_cny
     vat_cny = taxable_value * vat_rate
     total_cost_cny = taxable_value + vat_cny
-    savings_vs_mfn = fob_cny * mfn_rate
+    # Savings = what you'd pay under MFN vs zero-tariff (MFN tariff rate × FOB in CNY)
+    savings_vs_mfn_cny = fob_cny * mfn_rate
 
     breakdown = TariffBreakdown(
         fob_value=round(fob_value, 2),
@@ -250,7 +184,7 @@ def calculate_tariff(
         vat_rate=vat_rate,
         vat_amount=round(vat_cny, 2),
         total_cost=round(total_cost_cny, 2),
-        savings_vs_mfn=round(savings_vs_mfn, 2),
+        savings_vs_mfn=round(savings_vs_mfn_cny, 2),
         exchange_rate=usd_cny,
     )
 
@@ -274,16 +208,16 @@ def calculate_import_cost(
 ) -> dict:
     origin_upper = origin.upper()
     fob_value = quantity_kg * fob_per_kg
-    shipping_rate = get_shipping_rate(origin_upper)
+    shipping_rate = AFRICA_SHIPPING_RATES.get(origin_upper, AFRICA_SHIPPING_RATES["DEFAULT"])
     effective_qty = max(quantity_kg, 10)
     freight_usd = effective_qty * shipping_rate
     # Insurance: ICC(C) minimum coverage, 0.5% of FOB per international shipping custom
     insurance_usd = fob_value * 0.005
-    usd_cny = get_usd_cny_rate()
+    usd_cny = _get_usd_cny_rate()
     customs_clearance = CUSTOMS_CLEARANCE_BASE + quantity_kg * CUSTOMS_CLEARANCE_PER_KG
 
     # Tariff
-    if is_africa_zero_tariff_country(origin_upper):
+    if origin_upper in CN_ZERO_TARIFF_COUNTRIES:
         tariff = 0.0
     else:
         hs_rec = get_hs_record_from_name(product_name, db_path)

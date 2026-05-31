@@ -3,12 +3,16 @@ AfricaZero — FastAPI Backend
 Main entry point. Routes are mounted in app/routers/.
 """
 import json
+import os
 from contextlib import asynccontextmanager
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+# Import settings first to ensure load_dotenv runs before any other module reads env vars
+from app.core.config import settings
+from app.core.logging import setup_logging, RequestIDMiddleware, get_logger
 
 from app.routers import calculator, hs_codes, countries, subscribe
 from app.routers.auth import router as auth_router
@@ -21,43 +25,52 @@ from app.routers.suppliers import router as suppliers_router
 from app.routers.market_analysis import router as market_analysis_router
 from app.routers.debug_routes import router as debug_router
 
-load_dotenv()
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Bootstrap: ensure DB schema and seed data exist on startup."""
+    """Bootstrap: logging, secrets validation, and DB schema on startup."""
+    # 1. Setup structured logging
+    setup_logging(debug=settings.DEBUG)
+    logger = get_logger("main")
+    logger.info("AfricaZero backend starting...")
+
+    # 2. Validate required secrets in production
+    try:
+        settings.validate_secrets()
+        logger.info("All required secrets validated")
+    except ValueError as e:
+        logger.warning(f"Secrets validation: {e}")
+
+    # 3. Initialize database schema and seed data
     from app.models.database import get_db_path, init_db, seed_admin_user, ensure_sub_accounts_table
     db_path = get_db_path()
     init_db(db_path)
-    # Ensure sub_accounts table exists even when init_db() fast-skips.
-    # Idempotent — safe to call on every startup.
     ensure_sub_accounts_table(db_path)
     seed_admin_user(db_path)
+    logger.info(f"Database initialized at {db_path}")
+
     yield
 
+    # Cleanup on shutdown
+    logger.info("AfricaZero backend shutting down...")
 
-_allow_origins = [
-    "https://africa.zxqconsulting.com",
-    "https://global2china.zxqconsulting.com",
-    "https://frontend-nrlqfber2-johnzhangs-projects-50e83ec4.vercel.app",
-    "https://africa-web-1.onrender.com",
-    "https://africa-web-wuxs.onrender.com",
-    "https://africa-zero-frontend.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:8000",
-]
 
 app = FastAPI(
     title="AfricaZero API",
-    description="非洲零关税全链路决策平台 API",
-    version="1.0.0",
+    description="AfricaZero 非洲零关税全链路决策平台 API",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
+# ─── Middleware ─────────────────────────────────────────────────────────────────
+
+# Request ID tracing (must be first to add request ID to all downstream logs)
+app.add_middleware(RequestIDMiddleware)
+
+# CORS — uses settings.cors_origins_list for dynamic configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allow_origins,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,7 +94,60 @@ app.include_router(market_analysis_router, prefix="/api/v1", tags=["市场选品
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "africa-zero"}
+    return {"status": "ok", "service": "africa-zero", "version": "1.1.0"}
+
+
+@app.get("/metrics")
+def metrics():
+    """
+    Prometheus-format metrics endpoint.
+    Returns basic application metrics in Prometheus text format.
+    """
+    import time
+    from app.models.database import get_db_path
+
+    db_path = get_db_path()
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+
+    def count_table(name: str):
+        try:
+            cursor.execute(f"SELECT COUNT(*) FROM {name}")
+            return cursor.fetchone()[0]
+        except Exception:
+            return 0
+
+    conn.close()
+
+    # Prometheus text format
+    lines = [
+        "# HELP africa_zero_up Service is up",
+        "# TYPE africa_zero_up gauge",
+        "africa_zero_up 1",
+        "# HELP africa_zero_db_size_bytes Database size estimate",
+        "# TYPE africa_zero_db_size_bytes gauge",
+        f'africa_zero_db_size_bytes{{path="{db_path[:50]}"}} {os.path.getsize(db_path) if os.path.exists(db_path) else 0}',
+        "# HELP africa_zero_users_total Total users",
+        "# TYPE africa_zero_users_total gauge",
+        f"africa_zero_users_total {count_table('users')}",
+        "# HELP africa_zero_calculations_total Total calculations",
+        "# TYPE africa_zero_calculations_total counter",
+        f"africa_zero_calculations_total {count_table('calculations')}",
+        "# HELP africa_zero_suppliers_total Total suppliers",
+        "# TYPE africa_zero_suppliers_total gauge",
+        f"africa_zero_suppliers_total {count_table('suppliers')}",
+        "# HELP africa_zero_hs_codes_total Total HS codes",
+        "# TYPE africa_zero_hs_codes_total gauge",
+        f"africa_zero_hs_codes_total {count_table('hs_codes')}",
+        "# HELP africa_zero_subscriptions_active Active subscriptions",
+        "# TYPE africa_zero_subscriptions_active gauge",
+        f"africa_zero_subscriptions_active {count_table('subscriptions')}",
+        "# HELP africa_zero_start_timestamp_seconds Application start time",
+        "# TYPE africa_zero_start_timestamp_seconds gauge",
+        f"africa_zero_start_timestamp_seconds {time.time()}",
+    ]
+
+    return "\n".join(lines)
 
 
 @app.get("/debug/db-status")

@@ -1,0 +1,17 @@
+node_modules
+dist
+build
+.git
+.gitignore
+.DS_Store
+npm-debug.log
+.cache
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.env
+.env.*
+coverage
+.pytest_cache

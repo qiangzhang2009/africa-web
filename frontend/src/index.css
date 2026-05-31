@@ -2,11 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+
 :root {
-  --color-primary: #f97316;    /* Orange — 非洲太阳 */
-  --color-secondary: #0ea5e9;  /* Sky blue — 自由 */
-  --color-dark: #0f172a;       /* Slate 900 — 专业感 */
-  --color-light: #fef3c7;      /* Amber 100 — 温暖 */
+  --color-primary: #10b981;     /* Brand green */
+  --color-primary-hover: #059669;
+  --color-primary-active: #047857;
+  --color-primary-light: #d1fae5;
+  --color-primary-dark: #064e3b;
+  --color-accent: #f59e0b;
+  --color-accent-hover: #d97706;
+  --color-card: #ffffff;
+  --color-page: #f9fafb;
+  --color-border: #e5e7eb;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
 }
 
 body {
@@ -15,4 +25,34 @@ body {
 
 .font-heading {
   @apply font-sans font-bold tracking-tight;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus visible styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-100;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400;
+}
+
+/* Spin animation for loading spinners */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

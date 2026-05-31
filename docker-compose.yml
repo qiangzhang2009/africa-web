@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: africa_postgres
+    environment:
+      POSTGRES_DB: africa_zero
+      POSTGRES_USER: africa_user
+      POSTGRES_PASSWORD: africa_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U africa_user -d africa_zero"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: africa_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://africa_user:africa_pass@postgres:5432/africa_zero
+      DEEPSEEK_API_KEY: demo-key
+      JWT_SECRET: dev-secret-change-in-prod
+      EXCHANGE_RATE_API_KEY: 272fd8682bc120db4597b813
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8000
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: http://localhost:8000
+        VITE_TRACK_PROXY_URL: http://localhost:8000
+    container_name: africa_frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE: http://localhost:8000
+      VITE_TRACK_PROXY_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+
+  redis:
+    image: redis:7-alpine
+    container_name: africa_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:

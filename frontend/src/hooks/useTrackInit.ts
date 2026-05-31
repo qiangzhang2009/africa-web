@@ -31,17 +31,21 @@ declare global {
  */
 export function useTrackInit() {
   useEffect(() => {
-    // 等待 SDK 脚本加载完成
+    // Track SDK proxy: backend /geo/ip endpoint avoids browser CORS
+    // (ipapi.co doesn't send Access-Control-Allow-Origin, blocking the SDK's direct call)
+    const trackProxyBase = import.meta.env.VITE_TRACK_PROXY_URL ?? ''
+
+    // Wait for SDK script to load, then init
     const checkAndInit = () => {
       if (window.zxqTrack) {
         window.zxqTrack.init({
           tenant: TENANT_SLUG,
           debug: false,
-          autoTrack: false, // 我们手动控制页面追踪
+          autoTrack: false, // we handle page tracking manually
+          ...(trackProxyBase ? { apiUrl: trackProxyBase } : {}),
         })
         console.log('[Track] zxqTrack SDK initialized for tenant:', TENANT_SLUG)
       } else {
-        // SDK 未加载，延迟重试
         setTimeout(checkAndInit, 100)
       }
     }

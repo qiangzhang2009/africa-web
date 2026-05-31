@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosInstance } from 'axios'
 import type {
   TariffCalcInput,
   TariffCalcResult,
@@ -36,16 +36,44 @@ import type {
   SupplierCompareResult,
 } from '../types'
 
+// ─── Error Classes ─────────────────────────────────────────────────────────────
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+    public details?: unknown,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+export class QuotaExceededError extends ApiError {
+  constructor(message: string, public remaining: number) {
+    super(message, 429, 'quota_exceeded')
+    this.name = 'QuotaExceededError'
+  }
+}
+
+export class AuthError extends ApiError {
+  constructor(message = '未登录或登录已过期') {
+    super(message, 401, 'auth_required')
+    this.name = 'AuthError'
+  }
+}
+
 // ─── API Base URL ─────────────────────────────────────────────────────────────
 const BASE_URL = import.meta.env.VITE_API_BASE ?? (import.meta.env.DEV ? '/api' : '')
 
-export const api = axios.create({
+// ─── Axios instance ───────────────────────────────────────────────────────────
+export const api: AxiosInstance = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ─── Auth interceptor ─────────────────────────────────────────────────────────
+// ─── Token management ─────────────────────────────────────────────────────────
 const TOKEN_KEY = 'africa_token'
 
 export function getToken(): string | null {
@@ -60,13 +88,112 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
 
+// ─── Pending requests tracking ─────────────────────────────────────────────────
+let pendingRequests = new Map<string, AbortController>()
+
+// ─── Request interceptor ───────────────────────────────────────────────────────
 api.interceptors.request.use((config) => {
+  // Add auth token
   const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // Add request ID for tracing
+  const requestId = crypto.randomUUID?.() || Math.random().toString(36).slice(2)
+  config.headers['X-Request-ID'] = requestId
+
+  // Track pending request for cancellation
+  const controller = new AbortController()
+  config.signal = controller.signal
+  pendingRequests.set(requestId, controller)
+
+  // Dev mode: warn about missing env vars
+  if (import.meta.env.DEV && !import.meta.env.VITE_API_BASE) {
+    console.warn('[API] VITE_API_BASE not set, using default:', BASE_URL)
+  }
+
   return config
 })
+
+// ─── Response interceptor ──────────────────────────────────────────────────────
+api.interceptors.response.use(
+  (response) => {
+    // Remove from pending
+    const requestId = response.config.headers?.['X-Request-ID'] as string
+    if (requestId) pendingRequests.delete(requestId)
+    return response
+  },
+  (error) => {
+    const requestId = error.config?.headers?.['X-Request-ID'] as string
+    if (requestId) pendingRequests.delete(requestId)
+
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const data = error.response?.data
+      const detail = data?.detail || data?.message || error.message
+
+      // 401 — clear auth and redirect
+      if (status === 401) {
+        clearToken()
+        if (
+          !window.location.pathname.includes('/login') &&
+          !window.location.pathname.includes('/register')
+        ) {
+          window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname)
+        }
+        throw new AuthError()
+      }
+
+      // 429 — quota exceeded
+      if (status === 429) {
+        throw new QuotaExceededError(
+          data?.detail?.message || '今日免费次数已用完',
+          data?.detail?.remaining_today ?? 0,
+        )
+      }
+
+      // Network error
+      if (!error.response) {
+        throw new ApiError('网络连接失败，请检查网络后重试', 0, 'network_error')
+      }
+
+      throw new ApiError(
+        typeof detail === 'string' ? detail : '请求失败',
+        status ?? 0,
+        data?.code,
+        data,
+      )
+    }
+
+    throw new ApiError('未知错误', 0, 'unknown', error)
+  },
+)
+
+// ─── Request cancellation helper ───────────────────────────────────────────────
+export function cancelAllRequests() {
+  pendingRequests.forEach((controller) => controller.abort())
+  pendingRequests.clear()
+}
+
+// ─── Retry helper for GET requests ────────────────────────────────────────────
+async function withRetry<T>(fn: () => Promise<{ data: T }>, maxRetries = 1): Promise<T> {
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await fn()
+      return result.data
+    } catch (e) {
+      lastError = e as Error
+      if (attempt < maxRetries && !(e instanceof ApiError)) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+        continue
+      }
+      throw e
+    }
+  }
+  throw lastError
+}
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export async function login(data: LoginRequest): Promise<AuthResponse> {
@@ -86,7 +213,12 @@ export async function getMe() {
   return data
 }
 
-export async function getDailyUsage(): Promise<{ remaining_today: number; used_today: number; max_free_daily: number; tier: string }> {
+export async function getDailyUsage(): Promise<{
+  remaining_today: number
+  used_today: number
+  max_free_daily: number
+  tier: string
+}> {
   const { data } = await api.get('/auth/daily-usage')
   return data
 }
@@ -229,23 +361,32 @@ export async function adminGetUserDetail(userId: number) {
   return data
 }
 
-export async function adminChangeTier(userId: number, body: import('../types').TierChangeRequest) {
+export async function adminChangeTier(
+  userId: number,
+  body: import('../types').TierChangeRequest,
+) {
   const { data } = await api.post(`/admin/users/${userId}/tier`, body)
   return data
 }
 
 export async function adminGetRevenueStats(days = 90) {
-  const { data } = await api.get<import('../types').RevenueStats>('/admin/stats/revenue', { params: { days } })
+  const { data } = await api.get<import('../types').RevenueStats>('/admin/stats/revenue', {
+    params: { days },
+  })
   return data
 }
 
 export async function adminGetUsageStats(days = 30) {
-  const { data } = await api.get<import('../types').UsageStats>('/admin/stats/usage', { params: { days } })
+  const { data } = await api.get<import('../types').UsageStats>('/admin/stats/usage', {
+    params: { days },
+  })
   return data
 }
 
 export async function adminGetSubscriptionAnalytics() {
-  const { data } = await api.get<import('../types').SubscriptionAnalytics>('/admin/stats/subscriptions')
+  const { data } = await api.get<import('../types').SubscriptionAnalytics>(
+    '/admin/stats/subscriptions',
+  )
   return data
 }
 
@@ -369,10 +510,7 @@ export async function getSupplierReviews(
 }
 
 export async function createSupplierReview(review: SupplierReviewCreate) {
-  const { data } = await api.post(
-    `/suppliers/${review.supplier_id}/reviews`,
-    review,
-  )
+  const { data } = await api.post(`/suppliers/${review.supplier_id}/reviews`, review)
   return data as { message: string; review_id: number; new_rating: number }
 }
 
