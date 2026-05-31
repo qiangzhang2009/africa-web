@@ -709,9 +709,17 @@ async def get_subscription_analytics(
 
     # Average subscription duration (active subs)
     avg_duration = 0
-    cursor.execute(
-        _pg("""
-            SELECT AVG(
+    if _is_postgres():
+        cursor.execute(
+            """SELECT AVG(
+                EXTRACT(EPOCH FROM (expires_at::timestamp - started_at::timestamp)) / 86400.0
+            ) as avg_days
+            FROM subscriptions
+            WHERE status = 'active' AND started_at IS NOT NULL AND expires_at IS NOT NULL
+            """, ())
+    else:
+        cursor.execute(
+            """SELECT AVG(
                 CASE
                     WHEN expires_at IS NOT NULL AND started_at IS NOT NULL
                     THEN JULIANDAY(expires_at) - JULIANDAY(started_at)
@@ -720,8 +728,7 @@ async def get_subscription_analytics(
             ) as avg_days
             FROM subscriptions
             WHERE status = 'active' AND started_at IS NOT NULL
-        """),
-    )
+            """, ())
     try:
         raw = cursor.fetchone()["avg_days"]
         avg_duration = round(float(raw), 1) if raw else 0
