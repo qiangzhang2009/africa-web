@@ -1,5 +1,4 @@
 """Tariff and cost calculation service — consolidated."""
-import re
 import httpx
 
 from app.core.config import settings
@@ -16,7 +15,7 @@ from app.services.tariff.constants import (
     RETAIL_REFERENCE,
     ROASTING_LOSS_RATE,
 )
-from app.services.tariff.rules_engine import rules_engine, TariffRuleResult
+from app.services.tariff.rules_engine import TariffRuleResult, rules_engine
 
 __all__ = [
     "calculate_tariff",
