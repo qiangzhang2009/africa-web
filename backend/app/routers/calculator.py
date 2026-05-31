@@ -12,8 +12,8 @@ from app.schemas import (
     OriginCheckResult,
     TariffCalcInput,
 )
-from app.services.tariff import calculate_tariff, calculate_import_cost
 from app.services.ai.client import DeepSeekClient
+from app.services.tariff import calculate_import_cost, calculate_tariff
 
 logger = get_logger("calculator")
 
