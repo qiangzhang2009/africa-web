@@ -4,17 +4,28 @@ from app.schemas import (
     ImportCostInput,
     OriginCheckInput, OriginCheckResult,
 )
-import os, json
+import json
 from datetime import datetime
-from openai import OpenAI
 from app.services import tariff as tariff_service
+from app.services.ai.client import DeepSeekClient
 from app.models.database import get_db, get_db_path, _is_postgres
 from app.routers.auth import get_optional_user, get_user_daily_usage
+from app.core.logging import get_logger
+
+logger = get_logger("calculator")
 
 DB_PATH = get_db_path()
 FREE_DAILY_LIMIT = 3
 
 router = APIRouter()
+
+_ai_client: DeepSeekClient | None = None
+
+def get_ai_client() -> DeepSeekClient:
+    global _ai_client
+    if _ai_client is None:
+        _ai_client = DeepSeekClient()
+    return _ai_client
 
 
 # ─── POST /calculate/tariff ─────────────────────────────────────────────────
@@ -231,9 +242,19 @@ async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(
 
 @router.post("/origin/check", response_model=OriginCheckResult)
 async def check_origin(input: OriginCheckInput):
-    api_key = os.getenv("DEEPSEEK_API_KEY")
+    """Check if a product qualifies for zero-tariff origin under China/AfCFTA policy."""
+    client = get_ai_client()
 
-    if not api_key or not api_key.startswith("sk-"):
+    try:
+        result = client.check_origin(
+            hs_code=input.hs_code,
+            origin=input.origin,
+            processing_steps=input.processing_steps,
+            material_sources=input.material_sources,
+        )
+        return result
+    except ValueError as e:
+        logger.warning(f"Origin check fallback (no API key): {e}")
         return {
             "qualifies": True,
             "rule_applied": "规则估算模式",
@@ -248,53 +269,8 @@ async def check_origin(input: OriginCheckInput):
                 "配置DEEPSEEK_API_KEY后获得更准确的AI判定",
             ],
         }
-
-    try:
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.deepseek.com",
-        )
-        prompt = f"""你是非洲原产地证书合规专家。用户正在申请从 {input.origin} 进口 HS编码 {input.hs_code} 的产品。
-
-加工工序：
-{chr(10).join(f"{i+1}. {s}" for i, s in enumerate(input.processing_steps))}
-
-原料来源：
-{chr(10).join(input.material_sources) if input.material_sources else "全部为本地原料"}
-
-请判断：
-1. 该产品是否符合中国/非洲零关税的原产地条件？
-2. 适用的原产地规则是什么？
-3. 给出判断置信度（0-1）
-4. 如有问题，指出具体建议
-
-请严格用JSON格式回答，不要加任何markdown代码块：
-{{"qualifies": true/false, "rule_applied": "规则名称", "confidence": 0.7, "reasons": ["原因1", "原因2"], "suggestions": ["建议1"]}}
-"""
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = response.choices[0].message.content.strip()
-        if raw.startswith("```"):
-            for block in raw.split("```"):
-                block = block.strip()
-                if block and not block.startswith("json"):
-                    raw = block
-                    break
-        result = json.loads(raw.strip())
-        return result
-
-    except json.JSONDecodeError as e:
-        return {
-            "qualifies": True,
-            "rule_applied": "规则估算模式",
-            "confidence": 0.5,
-            "reasons": [f"AI返回格式异常，已切换为规则估算: {str(e)}"],
-            "suggestions": ["请稍后重试"],
-        }
     except Exception as e:
+        logger.error(f"Origin check failed: {e}")
         return {
             "qualifies": False,
             "rule_applied": None,
