@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     JWT_SECRET: str = ""
 
     # CORS
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8000"
+    # In production, set CORS_ORIGINS env var to:
+    # https://africa.zxqconsulting.com,https://zxqconsulting.com,https://www.zxqconsulting.com
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:8000,https://africa.zxqconsulting.com,https://zxqconsulting.com"
 
     # Admin
     ADMIN_EMAIL: str = "hello@africa-zero.com"
