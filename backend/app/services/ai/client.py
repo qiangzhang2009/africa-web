@@ -62,7 +62,7 @@ class DeepSeekClient:
 
     def _retry_with_backoff(self, func, *args, **kwargs) -> Any:
         """Execute a function with exponential backoff retry."""
-        last_exception = None
+        last_exception: Exception | None = None
         for attempt in range(self.max_retries):
             try:
                 return func(*args, **kwargs)
@@ -74,7 +74,9 @@ class DeepSeekClient:
                     time.sleep(wait_time)
                 else:
                     logger.error(f"AI request failed after {self.max_retries} attempts: {e}")
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise RuntimeError("AI request failed unexpectedly after all retries") from None
 
     def _do_request(self, messages: list[dict], max_tokens: int = 1024) -> str:
         """Make a single API request."""

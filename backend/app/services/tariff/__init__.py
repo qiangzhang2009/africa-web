@@ -1,1 +1,259 @@
-"""Tariff calculation services: constants, rules engine."""
+"""Tariff and cost calculation service — consolidated."""
+import re
+import httpx
+
+from app.core.config import settings
+from app.models.database import get_db
+from app.schemas import ImportCostBreakdown, TariffBreakdown
+from app.services.tariff.constants import (
+    AFRICA_SHIPPING_RATES,
+    CN_ZERO_TARIFF_COUNTRIES,
+    CUSTOMS_CLEARANCE_BASE,
+    CUSTOMS_CLEARANCE_PER_KG,
+    DOMESTIC_LOGISTICS,
+    PACKAGING_PER_BAG,
+    RETAIL_PRICE_MULTIPLIER,
+    RETAIL_REFERENCE,
+    ROASTING_LOSS_RATE,
+)
+from app.services.tariff.rules_engine import rules_engine, TariffRuleResult
+
+__all__ = [
+    "calculate_tariff",
+    "calculate_import_cost",
+    "rules_engine",
+    "TariffRuleResult",
+]
+
+
+def _get_usd_cny_rate() -> float:
+    """Get USD→CNY rate from ExchangeRate-API. Falls back to DEFAULT on failure."""
+    try:
+        url = (
+            f"https://v6.exchangerate-api.com/v6/{settings.EXCHANGE_RATE_API_KEY}"
+            "/pair/USD/CNY"
+        )
+        with httpx.Client(timeout=5.0) as client:
+            resp = client.get(url)
+        if resp.status_code == 200:
+            data = resp.json()
+            rate = data.get("conversion_rate")
+            if rate and rate > 0:
+                return float(rate)
+    except Exception:
+        pass
+    return settings.EXCHANGE_RATE_FALLBACK
+
+
+def _normalize_hs(code: str) -> str:
+    """Remove dots/spaces for DB lookup."""
+    return code.replace(".", "").replace(" ", "").replace("-", "")
+
+
+def _format_hs(code: str) -> str:
+    """Add dots to normalized HS code for display."""
+    c = _normalize_hs(code)
+    if len(c) <= 4:
+        return c
+    return ".".join(c[i * 2 : i * 2 + 2] for i in range((len(c) + 1) // 2))
+
+
+def get_hs_record(hs_code: str, db_path: str) -> dict | None:
+    """Query HS code from DB. Tries exact match first, then prefix match."""
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    normalized = _normalize_hs(hs_code)
+
+    for length in [10, 8, 6, 4]:
+        if len(normalized) < length:
+            continue
+        code = normalized[:length]
+        display = _format_hs(code)
+        cursor.execute(
+            "SELECT * FROM hs_codes WHERE hs_10 = ? OR hs_8 = ? OR hs_6 = ? OR hs_4 = ? LIMIT 1",
+            (display, display, display, display),
+        )
+        row = cursor.fetchone()
+        if row:
+            conn.close()
+            return dict(row)
+
+    conn.close()
+    return None
+
+
+def get_hs_record_from_name(name: str, db_path: str) -> dict | None:
+    conn = get_db(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM hs_codes WHERE name_zh LIKE ? LIMIT 1", (f"%{name}%",))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_category_from_name(name: str) -> str:
+    n = name.lower()
+    if "咖啡" in name or "coffee" in n:
+        return "0901"
+    if "可可" in name or "cocoa" in n:
+        return "1801"
+    if "腰果" in name or "cashew" in n:
+        return "0801"
+    if "坚果" in name or "nut" in n:
+        return "0802"
+    if "芝麻" in name or "sesame" in n:
+        return "1207"
+    return "default"
+
+
+def calculate_tariff(
+    hs_code: str,
+    origin_country: str,
+    destination: str,
+    fob_value: float,
+    db_path: str,
+    quantity_kg: float = 60.0,
+    freight_override: float | None = None,
+    exchange_rate: float | None = None,
+) -> dict:
+    hs_record = get_hs_record(hs_code, db_path)
+
+    if not hs_record:
+        return {
+            "success": False,
+            "message": f"未找到HS编码: {hs_code}，请检查输入或使用HS查询功能",
+            "origin_qualified": False,
+            "origin_rule": None,
+            "breakdown": None,
+        }
+
+    mfn_rate = hs_record["mfn_rate"]
+    vat_rate = hs_record["vat_rate"]
+    origin_upper = origin_country.upper()
+
+    shipping_rate_usd = AFRICA_SHIPPING_RATES.get(origin_upper, AFRICA_SHIPPING_RATES["DEFAULT"])
+    effective_qty = max(quantity_kg, 1)
+    if freight_override is not None:
+        freight_usd = freight_override
+    else:
+        freight_usd = shipping_rate_usd * effective_qty
+    insurance_usd = fob_value * 0.005
+    usd_cny = exchange_rate if exchange_rate else _get_usd_cny_rate()
+
+    rule_result: TariffRuleResult = rules_engine.evaluate(
+        hs_code=hs_code,
+        origin_country=origin_upper,
+        destination=destination,
+        mfn_rate=mfn_rate,
+    )
+
+    tariff_rate = rule_result.tariff_rate
+    origin_qualified = rule_result.origin_qualified
+    origin_rule = rule_result.rule_name
+    message = rule_result.message
+
+    fob_cny = fob_value * usd_cny
+    freight_cny = freight_usd * usd_cny
+    insurance_cny = insurance_usd * usd_cny
+    tariff_cny = fob_cny * tariff_rate
+    taxable_value = fob_cny + freight_cny + insurance_cny + tariff_cny
+    vat_cny = taxable_value * vat_rate
+    total_cost_cny = taxable_value + vat_cny
+    savings_vs_mfn_cny = fob_cny * mfn_rate
+
+    breakdown = TariffBreakdown(
+        fob_value=round(fob_value, 2),
+        quantity_kg=round(effective_qty, 2),
+        freight=round(freight_usd, 2),
+        insurance=round(insurance_usd, 2),
+        tariff_rate=tariff_rate,
+        tariff_amount=round(tariff_cny, 2),
+        vat_rate=vat_rate,
+        vat_amount=round(vat_cny, 2),
+        total_cost=round(total_cost_cny, 2),
+        savings_vs_mfn=round(savings_vs_mfn_cny, 2),
+        exchange_rate=usd_cny,
+    )
+
+    return {
+        "success": True,
+        "message": message,
+        "origin_qualified": origin_qualified,
+        "origin_rule": origin_rule,
+        "breakdown": breakdown,
+    }
+
+
+def calculate_import_cost(
+    product_name: str,
+    quantity_kg: float,
+    fob_per_kg: float,
+    origin: str,
+    db_path: str,
+) -> dict:
+    origin_upper = origin.upper()
+    fob_value = quantity_kg * fob_per_kg
+    shipping_rate = AFRICA_SHIPPING_RATES.get(origin_upper, AFRICA_SHIPPING_RATES["DEFAULT"])
+    effective_qty = max(quantity_kg, 10)
+    freight_usd = effective_qty * shipping_rate
+    insurance_usd = fob_value * 0.005
+    usd_cny = _get_usd_cny_rate()
+    customs_clearance = CUSTOMS_CLEARANCE_BASE + quantity_kg * CUSTOMS_CLEARANCE_PER_KG
+
+    if origin_upper in CN_ZERO_TARIFF_COUNTRIES:
+        tariff = 0.0
+    else:
+        hs_rec = get_hs_record_from_name(product_name, db_path)
+        tariff = fob_value * usd_cny * (hs_rec["mfn_rate"] if hs_rec else 0.08)
+
+    taxable = fob_value * usd_cny + freight_usd * usd_cny + insurance_usd * usd_cny + tariff
+    vat = taxable * 0.13
+    total_import = taxable + vat
+
+    roasting_loss = quantity_kg * ROASTING_LOSS_RATE
+    roasted_yield = quantity_kg - roasting_loss
+    domestic_logistics = DOMESTIC_LOGISTICS
+    package_count = int(roasted_yield / 0.227) if roasted_yield >= 0.227 else 1
+    packaging = package_count * PACKAGING_PER_BAG
+    total_cost = total_import + domestic_logistics + packaging
+    cost_per_package = total_cost / package_count if package_count > 0 else 0
+
+    category = get_category_from_name(product_name)
+    ref_price = RETAIL_REFERENCE.get(category, RETAIL_REFERENCE["default"])
+    suggested_retail = max(ref_price * 0.8, cost_per_package * RETAIL_PRICE_MULTIPLIER)
+    payback = int(total_cost / suggested_retail) if suggested_retail > 0 else 999
+
+    breakdown = ImportCostBreakdown(
+        fob_value=round(fob_value * usd_cny, 2),
+        international_freight=round(freight_usd * usd_cny, 2),
+        customs_clearance=round(customs_clearance, 2),
+        tariff=round(tariff, 2),
+        vat=round(vat, 2),
+        total_import_cost=round(total_import, 2),
+        roasting_loss_rate=ROASTING_LOSS_RATE,
+        roasted_yield_kg=round(roasted_yield, 3),
+        domestic_logistics=round(domestic_logistics, 2),
+        packaging_cost_per_unit=round(packaging, 2),
+        total_domestic_cost=round(domestic_logistics + packaging, 2),
+        total_cost=round(total_cost, 2),
+        cost_per_package=round(cost_per_package, 2),
+        suggested_retail_price=round(suggested_retail, 2),
+        payback_packages=payback,
+    )
+
+    guide = [
+        "准备合同、发票、装箱单（由出口方提供）",
+        "联系产地证的办理机构或代理报关行",
+        "向出口国商检机构申请原产地证书（Form A或相应优惠证书）",
+        "货物发运后，将证书随货寄送中国",
+        "货物到港后，报关时提交原产地证书申请零关税待遇",
+        "海关审核通过后，零关税放行",
+        "预计办理周期：出口国办理3-5个工作日 + 快递2-3天",
+    ]
+
+    return {
+        "success": True,
+        "message": "计算完成",
+        "breakdown": breakdown,
+        "origin_certificate_guide": guide,
+    }
