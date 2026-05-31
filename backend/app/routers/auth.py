@@ -1,22 +1,25 @@
 """
 Authentication router: register, login, JWT token management.
 """
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
 
-from app.models.database import get_db, hash_password, verify_password, get_db_path, sql_now, _is_postgres, _adapt_insert
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    verify_password,
+    hash_password,
+)
+from app.core.config import settings
+from app.models.database import get_db, get_db_path, _is_postgres, _adapt_insert, sql_now
 from app.schemas import (
     UserRegister, UserLogin, UserResponse,
     AuthResponse, SubAccountCreate, SubAccountResponse,
 )
 
 ALGORITHM = "HS256"
-SECRET_KEY = os.getenv("JWT_SECRET", "africa-zero-secret-key-change-in-production-2026")
-ACCESS_TOKEN_EXPIRE_DAYS = 30
 FREE_DAILY_LIMIT = 3
 
 router = APIRouter()
@@ -32,22 +35,13 @@ def _row_str(val) -> str | None:
     return str(val)
 
 
-def create_access_token(user_id: int, email: str, tier: str, is_admin: bool) -> str:
-    payload = {
-        "sub": str(user_id),
-        "email": email,
-        "tier": tier,
-        "is_admin": is_admin,
-        "exp": datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS),
-    }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
-
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not credentials:
         raise HTTPException(status_code=401, detail="未登录，请先登录")
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(credentials.credentials)
+        if payload is None:
+            raise HTTPException(status_code=401, detail="Token无效或已过期")
         user_id = int(payload.get("sub"))
         tier, expires_at, is_admin, is_active = get_user_tier_from_db(user_id, DB_PATH)
         if not is_active:
@@ -73,7 +67,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             "tier": tier,
             "is_admin": is_admin,
         }
-    except JWTError:
+    except (Exception,):
         raise HTTPException(status_code=401, detail="Token无效或已过期")
 
 
@@ -123,7 +117,9 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
     if not credentials:
         return None
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(credentials.credentials)
+        if payload is None:
+            return None
         user_id = int(payload.get("sub"))
         tier, expires_at, is_admin, is_active = get_user_tier_from_db(user_id, DB_PATH)
         if not is_active:
@@ -149,7 +145,7 @@ def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(securi
             "tier": tier,
             "is_admin": is_admin,
         }
-    except JWTError:
+    except (Exception,):
         return None
     except HTTPException:
         # get_user_tier_from_db raised 503: DB unavailable, return None
