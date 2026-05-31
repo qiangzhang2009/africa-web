@@ -177,7 +177,7 @@ export function cancelAllRequests() {
 }
 
 // ─── Retry helper for GET requests ────────────────────────────────────────────
-async function withRetry<T>(fn: () => Promise<{ data: T }>, maxRetries = 1): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<{ data: T }>, maxRetries = 1): Promise<T> {
   let lastError: Error | null = null
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {

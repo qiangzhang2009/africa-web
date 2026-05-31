@@ -8,9 +8,9 @@ export type ThemeMode = 'light' | 'dark' | 'system'
 
 export interface Theme {
   mode: ThemeMode
-  colors: typeof semantic
+  colors: Record<string, string>
   typography: typeof typography
-  shadows: typeof shadows
+  shadows: Record<string, string>
   borderRadius: typeof borderRadius
   transitions: typeof transitions
   zIndex: typeof zIndex
