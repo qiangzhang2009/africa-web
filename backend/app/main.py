@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Import settings first to ensure load_dotenv runs before any other module reads env vars
+# Import settings first to ensure load_dotenv runs before any other module reads env vars.
 from app.core.config import settings
 from app.core.logging import RequestIDMiddleware, get_logger, setup_logging
 from app.routers import calculator, countries, hs_codes, subscribe
