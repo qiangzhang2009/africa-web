@@ -12,7 +12,7 @@ from app.schemas import (
     OriginCheckResult,
     TariffCalcInput,
 )
-from app.services import tariff as tariff_service
+from app.services.tariff import calculate_tariff, calculate_import_cost
 from app.services.ai.client import DeepSeekClient
 
 logger = get_logger("calculator")
@@ -121,7 +121,7 @@ async def calc_tariff(input: TariffCalcInput, current_user: dict = Depends(get_o
             }
         )
 
-    result = tariff_service.calculate_tariff(
+    result = calculate_tariff(
         hs_code=input.hs_code,
         origin_country=input.origin_country,
         destination=input.destination,
@@ -197,7 +197,7 @@ async def calc_import_cost(input: ImportCostInput, current_user: dict = Depends(
             }
         )
 
-    result = tariff_service.calculate_import_cost(
+    result = calculate_import_cost(
         product_name=input.product_name,
         quantity_kg=input.quantity_kg,
         fob_per_kg=input.fob_per_kg,
