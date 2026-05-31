@@ -335,7 +335,7 @@ async def list_sub_accounts(current_user: dict = Depends(get_current_user)):
             email=r["email"],
             name=r["name"],
             is_active=bool(r["is_active"]),
-            created_at=r["created_at"],
+            created_at=_row_str(r["created_at"]),
         )
         for r in rows
     ]

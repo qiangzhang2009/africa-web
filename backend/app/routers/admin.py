@@ -633,10 +633,10 @@ async def get_usage_stats(
     # Top origin countries
     cursor.execute(
         _pg("""
-            SELECT origin_country, COUNT(*) as cnt
+            SELECT origin, COUNT(*) as cnt
             FROM calculations
-            WHERE DATE(created_at) >= ? AND origin_country IS NOT NULL
-            GROUP BY origin_country
+            WHERE DATE(created_at) >= ? AND origin IS NOT NULL
+            GROUP BY origin
             ORDER BY cnt DESC
             LIMIT 10
         """),

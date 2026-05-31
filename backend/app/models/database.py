@@ -177,6 +177,12 @@ def _pg_connect(url: str):
         def __contains__(self, key):
             return key in self._map
 
+        def get(self, key, default=None):
+            """Return row[key] if key exists, else default. Mimics dict.get()."""
+            if isinstance(key, int):
+                return self._vals[key] if 0 <= key < len(self._vals) else default
+            return self._vals[self._map[key]] if key in self._map else default
+
     return conn, _DictCursor(conn)
 
 

@@ -13,7 +13,7 @@ from app.models.database import (
     get_db,
     get_db_path,
 )
-from app.routers.auth import get_current_user
+from app.routers.auth import _row_str, get_current_user
 from app.schemas import ApiKeyCreate, ApiKeyResponse, ApiKeyWithPlain
 
 DB_PATH = get_db_path()
@@ -107,7 +107,7 @@ async def list_api_keys(current_user: dict = Depends(get_current_user)):
             rate_limit_day=r["rate_limit_day"],
             is_active=bool(r["is_active"]),
             last_used_at=r["last_used_at"],
-            created_at=r["created_at"],
+            created_at=_row_str(r["created_at"]),
         )
         for r in rows
     ]
