@@ -12,18 +12,17 @@ from pydantic import BaseModel
 
 # Import settings first to ensure load_dotenv runs before any other module reads env vars
 from app.core.config import settings
-from app.core.logging import setup_logging, RequestIDMiddleware, get_logger
-
-from app.routers import calculator, hs_codes, countries, subscribe
-from app.routers.auth import router as auth_router
-from app.routers.subscription import router as subscription_router
-from app.routers.api_keys import router as api_keys_router
+from app.core.logging import RequestIDMiddleware, get_logger, setup_logging
+from app.routers import calculator, countries, hs_codes, subscribe
 from app.routers.admin import router as admin_router
-from app.routers.freight import router as freight_router
+from app.routers.api_keys import router as api_keys_router
+from app.routers.auth import router as auth_router
 from app.routers.certificate import router as certificate_router
-from app.routers.suppliers import router as suppliers_router
-from app.routers.market_analysis import router as market_analysis_router
 from app.routers.debug_routes import router as debug_router
+from app.routers.freight import router as freight_router
+from app.routers.market_analysis import router as market_analysis_router
+from app.routers.subscription import router as subscription_router
+from app.routers.suppliers import router as suppliers_router
 
 
 @asynccontextmanager
@@ -42,7 +41,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Secrets validation: {e}")
 
     # 3. Initialize database schema and seed data
-    from app.models.database import get_db_path, init_db, seed_admin_user, ensure_sub_accounts_table
+    from app.models.database import ensure_sub_accounts_table, get_db_path, init_db, seed_admin_user
     db_path = get_db_path()
     init_db(db_path)
     ensure_sub_accounts_table(db_path)
@@ -104,7 +103,8 @@ def metrics():
     Returns basic application metrics in Prometheus text format.
     """
     import time
-    from app.models.database import get_db_path
+
+    from app.models.database import get_db, get_db_path
 
     db_path = get_db_path()
     conn = get_db(db_path)

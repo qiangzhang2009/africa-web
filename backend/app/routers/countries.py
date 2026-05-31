@@ -1,7 +1,7 @@
+
 from fastapi import APIRouter, Query
+
 from app.models.database import get_db, get_db_path
-from app.schemas import Country
-from typing import Optional
 
 DB_PATH = get_db_path()
 
@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/countries")
-async def list_countries(market: Optional[str] = Query(default=None)):
+async def list_countries(market: str | None = Query(default=None)):
     conn = get_db(DB_PATH)
     cursor = conn.cursor()
 

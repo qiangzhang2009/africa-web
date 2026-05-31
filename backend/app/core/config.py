@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import ClassVar
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):

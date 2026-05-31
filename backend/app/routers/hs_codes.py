@@ -1,7 +1,7 @@
+
 from fastapi import APIRouter, Query
-from app.models.database import get_db, get_db_path, _is_postgres
-from app.schemas import HSSearchResult
-from typing import Optional
+
+from app.models.database import get_db, get_db_path
 
 # HS编码零关税状态映射：品名关键词 → (是否零关税, 说明文字)
 ZERO_TARIFF_MAP = {

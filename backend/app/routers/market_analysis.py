@@ -2,9 +2,10 @@
 Market Analysis / Product Selection API.
 Provides curated product recommendations for importing from Africa to China.
 """
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from typing import Optional
+
 from app.models.database import get_db, get_db_path
 
 router = APIRouter()
@@ -15,22 +16,22 @@ class MarketProduct(BaseModel):
     id: int
     category: str
     product_name_zh: str
-    product_name_en: Optional[str]
+    product_name_en: str | None
     main_hs_codes: str
     origin_countries: str
     target_china_market: str
-    import_requirements: Optional[str]
+    import_requirements: str | None
     zero_tariff_china: bool
     tariff_rate: float
-    market_size_usd: Optional[str]
-    growth_rate: Optional[str]
-    top_importers: Optional[str]
-    supplier_countries: Optional[str]
-    key_suppliers: Optional[str]
-    certification_needs: Optional[str]
-    logistics_notes: Optional[str]
-    risk_factors: Optional[str]
-    recommendation: Optional[str]
+    market_size_usd: str | None
+    growth_rate: str | None
+    top_importers: str | None
+    supplier_countries: str | None
+    key_suppliers: str | None
+    certification_needs: str | None
+    logistics_notes: str | None
+    risk_factors: str | None
+    recommendation: str | None
     status: str
 
 
@@ -41,9 +42,9 @@ class MarketCategoryStat(BaseModel):
 
 @router.get("/market-analysis/products")
 async def list_market_products(
-    category: Optional[str] = Query(None, description="按品类筛选"),
+    category: str | None = Query(None, description="按品类筛选"),
     featured: bool = Query(False, description="仅显示推荐品类"),
-    search: Optional[str] = Query(None, description="搜索关键词"),
+    search: str | None = Query(None, description="搜索关键词"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=50),
 ):

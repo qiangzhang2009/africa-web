@@ -1,13 +1,20 @@
 """
 API Key management router (enterprise tier).
 """
-from datetime import datetime
 import hashlib
+from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Depends, Request
-from app.models.database import get_db, generate_api_key, mask_api_key, get_db_path, sql_now, _adapt_insert, _is_postgres
-from app.schemas import ApiKeyCreate, ApiKeyResponse, ApiKeyWithPlain
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.models.database import (
+    _adapt_insert,
+    _is_postgres,
+    generate_api_key,
+    get_db,
+    get_db_path,
+)
 from app.routers.auth import get_current_user
+from app.schemas import ApiKeyCreate, ApiKeyResponse, ApiKeyWithPlain
 
 DB_PATH = get_db_path()
 

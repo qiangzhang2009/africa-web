@@ -25,7 +25,15 @@ dependencies = [
 line-length = 100
 target-version = "py311"
 select = ["E", "F", "W", "I", "UP", "B", "C4"]
-ignore = ["E501"]
+ignore = [
+    "E501",     # line too long
+    "B008",     # function call in default arg (too strict for FastAPI route handlers)
+    "B904",     # raise statement in except loop (acceptable in this codebase)
+    "B905",     # no explicit `loop` kwarg in `retry` (cosmetic)
+    "C414",     # unneeded `list`/`set`/`dict` conversion (cosmetic)
+    "E402",     # module-level import (acceptable in FastAPI lifespan patterns)
+]
+per-file-ignores = { "__init__.py" = ["F401"] }
 
 [tool.mypy]
 python_version = "3.11"

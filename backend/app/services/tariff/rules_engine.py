@@ -1,6 +1,6 @@
 """Rules engine for tariff policy matching."""
 import re
-from typing import Optional
+
 from app.services.tariff.constants import (
     CN_ZERO_TARIFF_COUNTRIES,
     EU_EPA_COUNTRIES,
@@ -38,7 +38,7 @@ class TariffRulesEngine:
     ) -> TariffRuleResult:
         """
         Evaluate which tariff rule applies for a given trade flow.
-        
+
         Args:
             hs_code: Normalized HS code (digits only)
             origin_country: ISO 2-letter country code

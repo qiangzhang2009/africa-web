@@ -3,16 +3,23 @@ Admin router — user management, subscription activation, analytics.
 Only accessible by is_admin=True users.
 """
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional
+
 from app.models.database import (
-    get_db, get_db_path, hash_password,
-    sql_now, sql_date_sub_days, sql_date_add_days, sql_cast_date,
-    _adapt_insert, _is_postgres,
+    _adapt_insert,
+    _is_postgres,
+    get_db,
+    get_db_path,
+    hash_password,
+    sql_cast_date,
+    sql_date_add_days,
+    sql_date_sub_days,
+    sql_now,
 )
-from app.schemas import SubscriptionResponse
 from app.routers.auth import get_current_user
+from app.schemas import SubscriptionResponse
 
 DB_PATH = get_db_path()
 PH = "%s" if _is_postgres() else "?"
@@ -32,35 +39,35 @@ def _pg(sql: str) -> str:
 
 
 class AdminUpdateUser(BaseModel):
-    tier: Optional[str] = None
-    expires_at: Optional[str] = None
-    is_active: Optional[bool] = None
-    is_admin: Optional[bool] = None
+    tier: str | None = None
+    expires_at: str | None = None
+    is_active: bool | None = None
+    is_admin: bool | None = None
 
 
 class AdminCreateUser(BaseModel):
     email: str
     password: str
     tier: str = "free"
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
 
 
 class AdminCreateSubscription(BaseModel):
     user_id: int
     tier: str
     amount: float = 0
-    payment_method: Optional[str] = None
+    payment_method: str | None = None
     payment_channel: str = "manual"
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 # ─── Tier & Expiry Change ─────────────────────────────────────────────────────
 
 class TierChangeRequest(BaseModel):
     tier: str
-    expires_at: Optional[str] = None
-    reason: Optional[str] = None
-    duration_days: Optional[int] = None
+    expires_at: str | None = None
+    reason: str | None = None
+    duration_days: int | None = None
 
 
 @router.post("/admin/users/{user_id}/tier", tags=["Admin"])
@@ -134,10 +141,10 @@ async def change_user_tier(
 async def list_users(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    tier: Optional[str] = None,
-    search: Optional[str] = None,
-    sort: Optional[str] = Query(default="created_at", description="排序字段: created_at/calculations_count/last_active"),
-    order: Optional[str] = Query(default="desc", description="asc 或 desc"),
+    tier: str | None = None,
+    search: str | None = None,
+    sort: str | None = Query(default="created_at", description="排序字段: created_at/calculations_count/last_active"),
+    order: str | None = Query(default="desc", description="asc 或 desc"),
     _: dict = Depends(_require_admin),
 ):
     valid_sorts = {"created_at", "calculations_count", "last_active", "total_revenue"}
@@ -478,8 +485,8 @@ async def get_stats(_: dict = Depends(_require_admin)):
     avg_calcs_paying = 0
     if paying_users > 0:
         cursor.execute(
-            f"SELECT COUNT(*) as cnt FROM calculations WHERE user_id IN "
-            f"(SELECT id FROM users WHERE tier != 'free')"
+            "SELECT COUNT(*) as cnt FROM calculations WHERE user_id IN "
+            "(SELECT id FROM users WHERE tier != 'free')"
         )
         try:
             paying_calcs = cursor.fetchone()["cnt"]
