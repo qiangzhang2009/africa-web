@@ -5,6 +5,7 @@ Vercel rewrites /api/v1/debug/* → OnRender, so these must be at /api/v1 prefix
 Legacy root-level /debug/* routes are kept for local dev compatibility.
 """
 import os
+import httpx
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -58,3 +59,27 @@ def _db_status():
 @router.get("/debug/db-status")
 def api_v1_debug_db_status():
     return _db_status()
+
+
+# ─── /api/v1/geo/ip ─────────────────────────────────────────────────────────
+# Proxy for ipapi.co to avoid browser CORS issues.
+# The zxqTrack SDK fetches https://ipapi.co/json/ for geolocation.
+# ipapi.co doesn't send Access-Control-Allow-Origin, so the browser blocks it.
+# This endpoint calls ipapi.co server-side (no CORS) and returns the result.
+@router.get("/geo/ip")
+async def geo_ip():
+    """
+    Returns the server's public IP + geolocation from ipapi.co.
+    Compatible with the /json/ endpoint response shape.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get("https://ipapi.co/json/")
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.TimeoutException:
+        return {"error": "timeout", "message": "ipapi.co request timed out"}
+    except httpx.HTTPStatusError as e:
+        return {"error": "http_error", "message": str(e)}
+    except Exception as e:
+        return {"error": "unknown", "message": str(e)}
